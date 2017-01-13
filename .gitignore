@@ -1,0 +1,18 @@
+# Emacs backup files.
+*~
+
+# Setuptools distribution folder as well as gulp output files.
+/dist/
+/dist-cache/
+
+# Node and bower packages
+/node_modules/
+
+# Output of coverage tools.
+/coverage/
+
+# Anything containing .DS_Store
+.DS_Store
+
+# Secrets files
+secrets.json
