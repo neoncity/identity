@@ -1,0 +1,28 @@
+{
+    "name": "identity",
+    "version": "0.0.0",
+    "description": "The identity service.",
+    "author": "NeonCity team",
+    "scripts": {
+        "build": "webpack",
+        "serve": "node out/app.js",
+        "test": "true"
+    },
+    "respository": {
+        "type": "git",
+        "url": "git+https://github.com/neoncity/identity.git"
+    },
+    "license": "UNLICENSED",
+    "private": true,
+    "homepage": "https://github.com/neoncity/identity#readme",
+    "files": [
+        "out",
+        "src",
+        "Procfile",
+        "webpack.config.js"
+    ],
+    "dependencies": {},
+    "devDependencies": {
+        "webpack": "^1.13.2"
+    }
+}
