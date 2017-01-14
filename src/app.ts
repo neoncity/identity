@@ -1,4 +1,5 @@
 import fetch = require('isomorphic-fetch');
+import * as express from 'express';
 
 import { FOO } from './second';
 
@@ -28,11 +29,15 @@ console.log('' + b);
 
 console.log(FOO);
 
-console.log(fetch);
+const app = express();
 
-async function yello() {
-    const res = await fetch('http://example.com');
-    console.log(res);
-}
+app.get('/hello', async (req: express.Request, res: express.Response) => {
+    const resp = await fetch('http://example.com');
+    const content = await resp.text();
+    res.write(content);
+    res.end();
+});
 
-yello().then(() => {console.log('Here');});
+app.listen(10010, 'localhost', () => {
+    console.log('Started ...');
+});
