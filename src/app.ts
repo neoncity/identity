@@ -1,3 +1,5 @@
+import fetch = require('isomorphic-fetch');
+
 import { FOO } from './second';
 
 class Bar {
@@ -24,4 +26,13 @@ foo("World");
 const b = new Bar(10, 20);
 console.log('' + b);
 
-console.log(FOO)
+console.log(FOO);
+
+console.log(fetch);
+
+async function yello() {
+    const res = await fetch('http://example.com');
+    console.log(res);
+}
+
+yello().then(() => {console.log('Here');});

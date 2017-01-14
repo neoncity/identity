@@ -1,5 +1,6 @@
-const path = require('path');
 const failPlugin = require('webpack-fail-plugin');
+const path = require('path');
+const webpack = require('webpack');
 
 module.exports = {
     target: 'node',
@@ -19,7 +20,14 @@ module.exports = {
                 configFileName: 'tsconfig.json',
                 silent: true
             }
-        }],
+        }, {
+	    test: /\.(json)$/,
+	    include: [
+		path.resolve(__dirname, 'src'),
+		path.resolve(__dirname, 'node_modules')
+	    ],
+	    loader: 'json'
+	}],
     },
     resolve: {
         extensions: ['', '.js', '.ts'],
@@ -28,7 +36,9 @@ module.exports = {
         ]
     },
     plugins: [
-        failPlugin
+        failPlugin,
+        new webpack.IgnorePlugin(/vertx/),
+        // new webpack.IgnorePlugin(/\/iconv-loader$/)
     ],
     devtool: 'source-map'
 }
