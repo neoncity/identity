@@ -43,6 +43,8 @@ module.exports = {
     plugins: [
         failPlugin,
         new webpack.IgnorePlugin(/vertx/),
+        new webpack.IgnorePlugin(/LICENSE/),
+        new webpack.IgnorePlugin(/template.html/),
         // new webpack.IgnorePlugin(/\/iconv-loader$/)
     ],
     devtool: 'source-map'
