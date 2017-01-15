@@ -22,3 +22,8 @@ script:
 
 after_success:
 - npm run push-coverage-to-codecov
+
+deploy:
+- provider: script
+  skip_cleanup: true
+  script: bin/togemfury.sh
