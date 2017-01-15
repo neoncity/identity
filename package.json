@@ -9,7 +9,7 @@
         "pretest": "webpack",
         "test": "mocha out/tests.js",
         "test-with-coverage": "webpack && istanbul cover --config ./.istanbul.yml ./node_modules/mocha/bin/_mocha -- out/tests.js && remap-istanbul -t lcovonly -i ./out/coverage/coverage.json -o ./out/coverage/coverage.remapped.lcov",
-        "push-coverage-to-coveralls": "wc ./out/coverage/coverage.remapped.lcov && cat ./out/coverage/coverage.remapped.lcov | ./node_modules/coveralls/bin/coveralls.js"
+        "push-coverage-to-coveralls": "cat ./out/coverage/coverage.remapped.lcov && cat ./out/coverage/coverage.remapped.lcov | ./node_modules/coveralls/bin/coveralls.js"
     },
     "respository": {
         "type": "git",
