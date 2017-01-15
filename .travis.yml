@@ -1,0 +1,21 @@
+language: node_js
+
+node_js:
+- "node"
+
+cache:
+  directories:
+  - node_modules
+
+env:
+  global:
+  - ENV=TEST
+  - ADDRESS=0.0.0.0
+  - PORT=10000
+  - SECRET_PATH=null
+
+install:
+- npm install --registry=https://npm-proxy.fury.io/vsRAKKMwEs5p1RhfMGiF/neoncity/ --progress=false
+
+script:
+- npm run test
