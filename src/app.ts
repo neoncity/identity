@@ -1,6 +1,7 @@
 import fetch = require('isomorphic-fetch');
 import * as express from 'express';
 
+import * as config from './config';
 import { FOO } from './second';
 
 class Bar {
@@ -31,13 +32,14 @@ console.log(FOO);
 
 const app = express();
 
-app.get('/hello', async (req: express.Request, res: express.Response) => {
+app.get('/hello', async (_: express.Request, res: express.Response) => {
+    console.log(`I've found ${config.THE_KEY}`);
     const resp = await fetch('http://example.com');
     const content = await resp.text();
     res.write(content);
     res.end();
 });
 
-app.listen(10010, 'localhost', () => {
-    console.log('Started ...');
+app.listen(config.PORT, config.ADDRESS, () => {
+    console.log(`Started ... ${config.ADDRESS}:${config.PORT}`);
 });
