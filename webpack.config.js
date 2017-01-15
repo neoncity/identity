@@ -5,7 +5,8 @@ const webpack = require('webpack');
 module.exports = {
     target: 'node',
     entry: {
-        app: './src/app.ts'
+        app: './src/app.ts',
+        tests: './tests/app.ts',
     },
     output: {
         path: path.resolve(__dirname, 'out'),
@@ -14,7 +15,10 @@ module.exports = {
     module: {
         loaders: [{
             test: /\.ts$/,
-            include: [path.resolve(__dirname, 'src')],
+            include: [
+                path.resolve(__dirname, 'src'),
+                path.resolve(__dirname, 'tests')
+            ],
             loader: 'ts',
             query: {
                 configFileName: 'tsconfig.json',
@@ -32,7 +36,8 @@ module.exports = {
     resolve: {
         extensions: ['', '.js', '.ts'],
         root: [
-            path.resolve(__dirname, 'src')
+            path.resolve(__dirname, 'src'),
+            path.resolve(__dirname, 'tests')
         ]
     },
     plugins: [

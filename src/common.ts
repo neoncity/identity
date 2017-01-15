@@ -5,15 +5,18 @@ export enum Env {
     Prod
 }
 
-export function parseEnv(env: string): Env {
+export function parseEnv(env: string|undefined): Env {
+    if (env === undefined)
+        throw new Error('Environment is not defined');
+        
     switch (env.toUpperCase()) {
     case "LOCAL":
         return Env.Local;
     case "TEST":
         return Env.Test;
-    case "Staging":
+    case "STAGING":
         return Env.Staging;
-    case "Prod":
+    case "PROD":
         return Env.Prod;
     default:
         throw new Error(`Invalid environment ${env}`);
