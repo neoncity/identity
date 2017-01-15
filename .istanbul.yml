@@ -2,6 +2,7 @@ instrumentation:
   compact: true
   excludes:
    - '**/node_modules/**'
+   - '**/tests/**'
 reporting:
   dir: ./out/coverage
   reports: json
