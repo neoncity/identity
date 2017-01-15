@@ -2,4 +2,4 @@ instrumentation:
   compact: true
 reporting:
   dir: ./out/coverage
-  reports: [json, html]
+  reports: [json]
