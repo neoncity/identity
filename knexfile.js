@@ -7,8 +7,8 @@ module.exports = {
 	    max: 10
 	},
 	migrations: {
-	    directory: './migrations',
-	    tableName: 'migrations_identity'
+	    directory: process.env.DATABASE_MIGRATIONS_DIR,
+	    tableName: process.env.DATABASE_MIGRATIONS_TABLE
 	}
     }
 }

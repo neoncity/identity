@@ -13,6 +13,8 @@ env:
   - ADDRESS=0.0.0.0
   - PORT=10000
   - DATABASE_URL=null
+  - DATABASE_MIGRATIONS_DIR=null
+  - DATABASE_MIGRATIONS_TABLE=null
   - SECRET_PATH=null
 
 install:
