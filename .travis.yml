@@ -12,6 +12,7 @@ env:
   - ENV=TEST
   - ADDRESS=0.0.0.0
   - PORT=10000
+  - DATABASE_URL=null
   - SECRET_PATH=null
 
 install:

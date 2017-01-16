@@ -1,5 +1,6 @@
-import fetch = require('isomorphic-fetch');
 import * as express from 'express';
+import { execSync } from 'child_process';
+import fetch = require('isomorphic-fetch');
 
 import * as config from './config';
 import { FOO } from './second';
@@ -30,16 +31,23 @@ console.log('' + b);
 
 console.log(FOO);
 
-const app = express();
 
-app.get('/hello', async (_: express.Request, res: express.Response) => {
-    console.log(`I've found ${config.THE_KEY}`);
-    const resp = await fetch('http://example.com');
-    const content = await resp.text();
-    res.write(content);
-    res.end();
-});
+async function main() {
+    execSync('./node_modules/.bin/knex migrate:latest');
 
-app.listen(config.PORT, config.ADDRESS, () => {
-    console.log(`Started ... ${config.ADDRESS}:${config.PORT}`);
-});
+    const app = express();
+
+    app.get('/hello', async (_: express.Request, res: express.Response) => {
+	console.log(`I've found ${config.THE_KEY}`);
+        const resp = await fetch('http://example.com');
+        const content = await resp.text();
+        res.write(content);
+        res.end();
+    });
+
+    app.listen(config.PORT, config.ADDRESS, () => {
+	console.log(`Started ... ${config.ADDRESS}:${config.PORT}`);
+    });
+}
+
+main();

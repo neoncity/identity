@@ -36,6 +36,7 @@ COPY . /neoncity/pack
 ENV ENV LOCAL
 ENV ADDRESS 0.0.0.0
 ENV PORT 10000
+ENV DATABASE_URL postgresql://neoncity:neoncity@neoncity-postgres:5432/neoncity
 ENV SECRETS_PATH /neoncity/var/secrets.json
 
 RUN chown -R neoncity:neoncity /neoncity
