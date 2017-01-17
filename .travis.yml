@@ -16,9 +16,11 @@ env:
   - DATABASE_MIGRATIONS_DIR=null
   - DATABASE_MIGRATIONS_TABLE=null
   - SECRET_PATH=null
+  # NPM_CONFIG_REGISTRY=???
+  - secure: "M6lTv1SEH2nCP5G+C8aUzn6TIlTJltOIkKT50rBN/7aojM91lGcM8wVAiXMtJerxCXPcsNgjQBuGPUSk2lUoCFPuXB3ZQDdEcKZAyvK7GTNDCucciBo7/bH8zJxwbVNeRPmu8diaWhWpA073n2SEma/3TG7DR7s+GOsEmt3ssitqNOFfq1cBg3oEvzxrRvOa7bK1q9b00BKqnufEtpkdOo3Slynw3UIzsaWSAnvA4dLrsK+zewX1pCgMFo/s9/WUn2OU3yK2+ErlmAKq/wbe3gNBbFMCvJZB3zKB1oD3bbd6I0FH038UHEngVeh+6WLT2Tgg3br86hu+hWgE4h/RJLAp/aGqkVsPxxG3ItLapgWw6hITLajzzyVDWTBmprS4aYqrTLgc4j3NgQEvno7g57SyhGUycY57jG3NI8AEgCGzuah3fHLzUiax0vhMC55xo7W3ujRLxe2A9WU/+TTKXS2Kkp+IDcd+7ecW5c7zbgD8oE8ElTK7wE2QViKjDGfY0BaSQldi7XiRB6ISBO3SlkQWbqkeBJcGRTGf0zJmhmMCEZ1lnD8qs96irCd4MeB3oicQ+bO/sbbJzWG3ol2AvfFUk9DTbhDRu+Rhyyk93wBeCcpTg9LU/v2wKxH/ljlZJViVEWciVw+k/17PlJhLA+cFKwCPTSKbr6YBWttt24g="
 
 install:
-- npm install --registry=https://npm-proxy.fury.io/vsRAKKMwEs5p1RhfMGiF/neoncity/ --progress=false
+- npm install --registry=${NPM_CONFIG_REGISTRY} --progress=false
 
 script:
 - npm run test-with-coverage
