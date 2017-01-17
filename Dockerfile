@@ -2,6 +2,8 @@ FROM ubuntu:latest
 
 MAINTAINER NeonCity team <horia141@gmail.com>
 
+ARG NPM_CONFIG_REGISTRY
+
 # Install global packages.
 
 RUN apt-get update -y && \
@@ -25,7 +27,7 @@ RUN groupadd neoncity && \
 # Install package requirements.
 
 COPY package.json /neoncity/pack/package.json
-RUN cd /neoncity/pack && npm install --registry=https://npm-proxy.fury.io/vsRAKKMwEs5p1RhfMGiF/neoncity/ --progress=false
+RUN cd /neoncity/pack && npm install --registry=${NPM_CONFIG_REGISTRY} --progress=false
 
 # Copy source code.
 
