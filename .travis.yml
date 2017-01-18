@@ -16,11 +16,12 @@ env:
   - DATABASE_MIGRATIONS_DIR=null
   - DATABASE_MIGRATIONS_TABLE=null
   - SECRET_PATH=null
-  # NPM_CONFIG_REGISTRY=???
-  - secure: "M6lTv1SEH2nCP5G+C8aUzn6TIlTJltOIkKT50rBN/7aojM91lGcM8wVAiXMtJerxCXPcsNgjQBuGPUSk2lUoCFPuXB3ZQDdEcKZAyvK7GTNDCucciBo7/bH8zJxwbVNeRPmu8diaWhWpA073n2SEma/3TG7DR7s+GOsEmt3ssitqNOFfq1cBg3oEvzxrRvOa7bK1q9b00BKqnufEtpkdOo3Slynw3UIzsaWSAnvA4dLrsK+zewX1pCgMFo/s9/WUn2OU3yK2+ErlmAKq/wbe3gNBbFMCvJZB3zKB1oD3bbd6I0FH038UHEngVeh+6WLT2Tgg3br86hu+hWgE4h/RJLAp/aGqkVsPxxG3ItLapgWw6hITLajzzyVDWTBmprS4aYqrTLgc4j3NgQEvno7g57SyhGUycY57jG3NI8AEgCGzuah3fHLzUiax0vhMC55xo7W3ujRLxe2A9WU/+TTKXS2Kkp+IDcd+7ecW5c7zbgD8oE8ElTK7wE2QViKjDGfY0BaSQldi7XiRB6ISBO3SlkQWbqkeBJcGRTGf0zJmhmMCEZ1lnD8qs96irCd4MeB3oicQ+bO/sbbJzWG3ol2AvfFUk9DTbhDRu+Rhyyk93wBeCcpTg9LU/v2wKxH/ljlZJViVEWciVw+k/17PlJhLA+cFKwCPTSKbr6YBWttt24g="
+  - GEMFURY_USER=neoncity
+  # GEMFURY_API_KEY=???
+  - secure: "EzbAUoZFAAiT5v0Ky4FuKE+SMjqqJravCHgB3WMjw//gvRedKFSqn9axvijBVFJb+NEfW2CguC0gNnYVKljxYh/6ADp0+hbkkqnIp4okPaJhWQqjado9DrFF4eFSLR3p9KBTyhQxGcQxmXV3+7pThM3NfyGUySfT+NOEOi7/eVYd6EfCg+EUBGeezvGgVEKYQ1xNAVMVvV2iezl/P8kERJht+p47VS58Q7G8bAi1rJ3hNq57VYZmSMnYUdJLKVBxHCtT0WF73JgJdEgxG/A3dPiMEK8WEahfXAQtHI5H7PAG7+/wUmm24RITTzxJMILchTBsfXXbeCP7fLqxGtZeKVmfuti5+auvJAIKid3nFm3klqnf1YhkznXYz6WLsD3f/M3OVpB6M9oKPHxrbE2ujHT/8Lxa7XCLc4iYqyx/hu0NbQjv83e1HTzh5Fme084QuKQ+GLxTbkb5LmGeI9wbzKN4iJWJWyNwBRa5PDj+AHY8npRjT2+RlLbq2f+zuuDIEKju58idMnCrzRxJDrLf6/RTgtycr5IZ+IwwZSBZTFp9FFakMyV/O0rl1xDmZi858WVn/BW4EaST7yOtaxmk5K83MjcqTzCo6PRBaY3BLi4idX2OF+B419/ILNSDkKzV/3VTdpxtrbJIjbvJCk6gueCok7ZxlKrpLdUU0jImk4Y="
 
 install:
-- npm install --registry=${NPM_CONFIG_REGISTRY} --progress=false
+- npm install --registry=https://npm-proxy.fury.io/${GEMFURY_API_KEY}/${GEMFURY_USER}/ --progress=false
 
 script:
 - npm run test-with-coverage
@@ -31,7 +32,7 @@ after_success:
 deploy:
 - provider: script
   skip_cleanup: true
-  script: $(npm bin)/gemfury-publish --gemfuryUser=neoncity --gemfuryApiKey=${NPM_CONFIG_REGISTRY}
+  script: $(npm bin)/gemfury-publish --gemfuryUser=${GEMFURY_USER} --gemfuryApiKey=${GEMFURY_API_KEY}
 - provider: heroku
   skip_cleanup: true
   app: identity-staging-neoncity

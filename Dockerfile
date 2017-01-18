@@ -2,7 +2,8 @@ FROM ubuntu:latest
 
 MAINTAINER NeonCity team <horia141@gmail.com>
 
-ARG NPM_CONFIG_REGISTRY
+ARG GEMFURY_USER
+ARG GEMFURY_API_KEY
 
 # Install global packages.
 
@@ -27,7 +28,7 @@ RUN groupadd neoncity && \
 # Install package requirements.
 
 COPY package.json /neoncity/pack/package.json
-RUN cd /neoncity/pack && npm install --registry=${NPM_CONFIG_REGISTRY} --progress=false
+RUN cd /neoncity/pack && npm install --registry=https://npm-proxy.fury.io/${GEMFURY_API_KEY}/${GEMFURY_USER}/ --progress=false
 
 # Copy source code.
 
