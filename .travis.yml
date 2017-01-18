@@ -31,7 +31,7 @@ after_success:
 deploy:
 - provider: script
   skip_cleanup: true
-  script: bin/togemfury.sh
+  script: $(npm bin)/gemfury-publish --gemfuryUser=neoncity --gemfuryApiKey=${NPM_CONFIG_REGISTRY}
 - provider: heroku
   skip_cleanup: true
   app: identity-staging-neoncity

@@ -1,6 +1,6 @@
 {
   "name": "identity",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "The identity service.",
   "author": "NeonCity team",
   "scripts": {
@@ -41,6 +41,7 @@
     "@types/node": "^7.0.0",
     "chai": "^3.5.0",
     "codecov": "^1.0.1",
+    "gemfury-publish": "^1.0.0",
     "istanbul": "^0.4.5",
     "json-loader": "^0.5.4",
     "mocha": "^3.2.0",
