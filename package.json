@@ -1,6 +1,6 @@
 {
   "name": "@neoncity/identity",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "The identity service.",
   "author": "NeonCity team",
   "scripts": {
@@ -32,6 +32,7 @@
     "pg": "^6.1.2"
   },
   "devDependencies": {
+    "@neoncity/common-js": "^0.0.4",
     "@neoncity/coverage-filter": "^0.0.4",
     "@neoncity/togemfury": "^0.0.2",      
     "@types/chai": "^3.4.34",

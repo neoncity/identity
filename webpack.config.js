@@ -17,7 +17,8 @@ module.exports = {
             test: /\.ts$/,
             include: [
                 path.resolve(__dirname, 'src'),
-                path.resolve(__dirname, 'tests')
+                path.resolve(__dirname, 'tests'),
+		path.resolve(__dirname, 'node_modules')
             ],
             loader: 'ts',
             query: {
@@ -37,7 +38,8 @@ module.exports = {
         extensions: ['', '.js', '.ts'],
         root: [
             path.resolve(__dirname, 'src'),
-            path.resolve(__dirname, 'tests')
+            path.resolve(__dirname, 'tests'),
+	    path.resolve(__dirname, 'node_modules')
         ]
     },
     externals: {
