@@ -1,6 +1,6 @@
 {
   "name": "@neoncity/identity",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "description": "The identity service.",
   "author": "NeonCity team",
   "scripts": {
