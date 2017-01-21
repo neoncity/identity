@@ -33,7 +33,7 @@ after_success:
 deploy:
 - provider: script
   skip_cleanup: true
-  script: ls -lah out && $(npm bin)/togemfury --src_root out --user ${GEMFURY_USER} --api_key ${GEMFURY_API_KEY}
+  script: ls -lah out && $(npm bin)/togemfury --user ${GEMFURY_USER} --api_key ${GEMFURY_API_KEY}
 - provider: heroku
   skip_cleanup: true
   app: identity-staging-neoncity
