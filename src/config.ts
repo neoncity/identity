@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 
-import { Env, parseEnv, isLocal} from '@neoncity/common-js/src/env';
+import { Env, parseEnv, isLocal} from '@neoncity/common-js/env';
 
 export const ENV:Env = parseEnv(process.env.ENV);
 export const ADDRESS:string = process.env.ADDRESS;
