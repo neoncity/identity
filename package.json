@@ -1,6 +1,6 @@
 {
   "name": "@neoncity/identity",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "description": "The identity service.",
   "author": "NeonCity team",
   "scripts": {
@@ -19,8 +19,6 @@
   "private": true,
   "homepage": "https://github.com/neoncity/identity#readme",
   "files": [
-    "out",
-    "src",
     "Procfile",
     "webpack.config.js"
   ],

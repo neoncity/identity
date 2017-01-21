@@ -28,6 +28,7 @@ script:
 
 after_success:
 - npm run push-coverage-to-codecov
+- rm -rf out/coverage
 
 deploy:
 - provider: script
