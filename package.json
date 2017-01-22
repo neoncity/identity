@@ -35,7 +35,7 @@
   },
   "devDependencies": {
     "@neoncity/common-js": "^0.0.11",
-    "@neoncity/coverage-filter": "^0.0.5",
+    "@neoncity/coverage-filter": "^0.0.7",
     "@neoncity/togemfury": "^0.0.9",
     "@types/chai": "^3.4.34",
     "@types/es6-promise": "0.0.32",
