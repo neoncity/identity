@@ -1,6 +1,6 @@
 {
   "name": "@neoncity/identity",
-  "version": "0.0.24",
+  "version": "0.0.25",
   "description": "The identity service.",
   "author": "NeonCity team",
   "scripts": {
@@ -47,7 +47,6 @@
     "chai": "^3.5.0",
     "codecov": "^1.0.1",
     "istanbul": "^0.4.5",
-    "json-loader": "^0.5.4",
     "mocha": "^3.2.0",
     "remap-istanbul": "^0.8.4",
     "typescript": "^2.1.5"
