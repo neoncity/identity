@@ -23,7 +23,6 @@
     "migrations": "c:migrations",
     "Procfile": "f:Procfile",
     "knexfile.js": "f:knexfile.js",
-    "webpack.config.js": "f:webpack.config.js",
     "package.json": "f:package.json",
     "tsconfig.json": "f:tsconfig.json"
   },
