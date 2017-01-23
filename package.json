@@ -1,14 +1,14 @@
 {
   "name": "@neoncity/identity",
-  "version": "0.0.27",
+  "version": "0.0.28",
   "description": "The identity service.",
   "author": "NeonCity team",
   "scripts": {
     "build": "tsc",
-    "serve": "node out/index.js",
-    "pretest": "tsc",
-    "test": "mocha $(find out -name '*-test.js')",
-    "test-with-coverage": "tsc && istanbul cover --config ./.istanbul.yml ./node_modules/mocha/bin/_mocha --  $(find out -name '*-test.js') && remap-istanbul -i ./build/coverage/coverage-final.json -o ./build/coverage/coverage-remapped.json && coverage-filter -i ./build/coverage/coverage-remapped.json -o ./build/coverage/coverage-filtered.json",
+    "serve-dev": "tsc --watch & nodemon out/index.js",
+    "serve-prod": "node out/index.js",
+    "pretest": "npm run build",
+    "test": "istanbul cover --config ./.istanbul.yml ./node_modules/mocha/bin/_mocha --  $(find out -name '*-test.js') && remap-istanbul -i ./build/coverage/coverage-final.json -o ./build/coverage/coverage-remapped.json && coverage-filter -i ./build/coverage/coverage-remapped.json -o ./build/coverage/coverage-filtered.json",
     "push-coverage-to-codecov": "codecov -f ./build/coverage/coverage-filtered.json"
   },
   "respository": {
@@ -48,6 +48,7 @@
     "codecov": "^1.0.1",
     "istanbul": "^0.4.5",
     "mocha": "^3.2.0",
+    "nodemon": "^1.11.0",
     "remap-istanbul": "^0.8.4",
     "typescript": "^2.1.5"
   }

@@ -1,1 +1,1 @@
-web: node ./out/app.js
+web: npm run serve-prod

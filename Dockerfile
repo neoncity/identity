@@ -50,4 +50,4 @@ VOLUME ["/neoncity/var/secrets.json"]
 WORKDIR /neoncity/pack
 EXPOSE 10000
 USER neoncity
-ENTRYPOINT ["npm", "run", "serve"]
+ENTRYPOINT ["npm", "run", "serve-dev"]

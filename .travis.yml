@@ -24,7 +24,7 @@ install:
 - npm install --registry=https://npm-proxy.fury.io/${GEMFURY_API_KEY}/${GEMFURY_USER}/ --progress=false
 
 script:
-- npm run test-with-coverage
+- npm run test
 
 after_success:
 - npm run push-coverage-to-codecov
