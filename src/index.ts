@@ -45,6 +45,11 @@ async function main() {
         res.end();
     });
 
+    app.get('/user', async (_: express.Request, res: express.Response) => {
+        res.write(JSON.stringify({user: {id: 1, timeCreated: 123151131, timeLastUpdated: 123151131, role: 1, auth0UserIdHash: '0000000000000000000000000000000000000000000000000000000000000000', pictureUri: 'http://example.com/a.jpeg'}}));
+        res.end();
+    });
+
     app.listen(config.PORT, config.ADDRESS, () => {
 	console.log(`Started ... ${config.ADDRESS}:${config.PORT}`);
     });
