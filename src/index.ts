@@ -37,6 +37,14 @@ async function main() {
 
     const app = express();
 
+    app.use((_: express.Request, res: express.Response, next: () => void) => {
+	res.header('Access-Control-Allow-Origin', config.CLIENTS);
+	res.header('Access-Control-Allow-Headers', 'X-NeonCity-AuthInfo'); // TODO: make this better
+	next();
+    });
+	
+ 
+
     app.get('/hello', async (_: express.Request, res: express.Response) => {
 	console.log(`I've found ${config.THE_KEY}`);
         const resp = await fetch('http://example.com');

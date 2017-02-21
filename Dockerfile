@@ -43,6 +43,7 @@ ENV DATABASE_URL postgresql://neoncity:neoncity@neoncity-postgres:5432/neoncity
 ENV DATABASE_MIGRATIONS_DIR /neoncity/pack/migrations
 ENV DATABASE_MIGRATIONS_TABLE migrations_identity
 ENV SECRETS_PATH /neoncity/var/secrets.json
+ENV CLIENTS http://localhost:10002
 
 RUN chown -R neoncity:neoncity /neoncity
 VOLUME ["/neoncity/pack/src"]
