@@ -9,6 +9,7 @@
         "strictNullChecks": true,
         "sourceMap": true,
         "declaration": true,
+	"experimentalDecorators": true,
         "outDir": "./out"
     },
     "include": [

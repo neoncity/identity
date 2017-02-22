@@ -10,12 +10,15 @@ export const DATABASE_MIGRATIONS_DIR:string = process.env.DATABASE_MIGRATIONS_DI
 export const DATABASE_MIGRATIONS_TABLE:string = process.env.DATABASE_MIGRATIONS_TABLE;
 export const CLIENTS:string = process.env.CLIENTS;
 
-export let THE_KEY: string;
+export let AUTH0_CLIENT_ID: string;
+export let AUTH0_DOMAIN: string;
 
 if (isLocal(ENV)) {
     const secrets = JSON.parse(readFileSync(process.env.SECRETS_PATH, 'utf-8'));
 
-    THE_KEY = secrets["THE_KEY"];
+    AUTH0_CLIENT_ID = secrets["AUTH0_CLIENT_ID"];
+    AUTH0_DOMAIN = secrets["AUTH0_DOMAIN"];
 } else {
-    THE_KEY = process.env.THE_KEY;
+    AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID;
+    AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
 }
