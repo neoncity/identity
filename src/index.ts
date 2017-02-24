@@ -120,8 +120,76 @@ async function main() {
         res.end();
     });
 
-    app.post('/user', async (_: express.Request, res: express.Response) => {
-        res.write(JSON.stringify({user: {id: 1, timeCreated: 123151131, timeLastUpdated: 123151131, role: 1, auth0UserIdHash: '0000000000000000000000000000000000000000000000000000000000000000', pictureUri: 'http://example.com/a.jpeg'}}));
+    app.post('/user', async (req: express.Request, res: express.Response) => {
+	const rightNow = new Date(Date.now());
+	
+	const authInfoSerialized: string|undefined = req.header('X-NeonCity-AuthInfo');
+	if (typeof authInfoSerialized == 'undefined') {
+	    res.status(401);
+	    res.end();
+	    return;
+	}
+
+	let authInfo: AuthInfo|null = null;
+	try {
+	    authInfo = authInfoMarshaller.extract(JSON.parse(authInfoSerialized));
+	} catch (e) {
+	    res.status(400);
+	    res.end();
+	    return;
+	}
+
+	// Make a call to auth0
+	let userProfile: Auth0Profile|null = null;
+	try {
+	    const userProfileSerialized = await auth0Client.getProfile(authInfo.auth0AccessToken);
+	    userProfile = auth0ProfileMarshaller.extract(JSON.parse(userProfileSerialized));
+	} catch (e) {
+	    res.status(500);
+	    res.end();
+	    return;
+	}
+
+	// Compute hash of user_id.
+	const sha256hash = crypto.createHash('sha256');
+	sha256hash.update(userProfile.user_id);
+	const auth0UserIdHash = sha256hash.digest('hex');
+
+	// Insert in database
+	let dbUserId: number = -1;
+	try {
+	    const rawResponse = await conn.raw(`
+		insert into identity.user (time_created, time_last_updated, role, auth0_user_id_hash)
+		values (?, ?, ?, ?)
+	        on conflict (auth0_user_id_hash) do update set time_last_updated = excluded.time_last_updated 
+		returning id`,
+		[rightNow, rightNow, _roleToDbRole(Role.Regular), auth0UserIdHash])
+
+	    if (rawResponse.rowCount == 0) {
+	    	res.status(500);
+	    	res.end();
+	    	return;
+	    }
+
+	    dbUserId = rawResponse.rows[0]['id'];
+	} catch (e) {
+	    res.status(500);
+	    res.end();
+	    return;
+	}
+
+	// Return joined value from auth0 and db
+
+	const user = new User(
+	    dbUserId,
+	    rightNow,
+	    rightNow,
+	    Role.Regular,
+	    auth0UserIdHash,
+	    userProfile.name,
+	    userProfile.picture);
+	
+        res.write(JSON.stringify(userMarshaller.pack(user)));
         res.end();
     });
 
@@ -129,6 +197,20 @@ async function main() {
 	console.log(`Started ... ${config.ADDRESS}:${config.PORT}`);
     });
 }
+
+
+function _roleToDbRole(role: Role): 'regular'|'admin' {
+    switch (role) {
+    case Role.Regular:
+	return 'regular';
+    case Role.Admin:
+	return 'admin';
+    case Role.Unknown:
+    default:
+	throw new Error('Invalid role');
+    }
+}
+
 
 function _dbRoleToRole(dbRole: 'regular'|'admin'): Role {
     switch (dbRole) {
