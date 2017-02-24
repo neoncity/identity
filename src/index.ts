@@ -1,7 +1,8 @@
 import * as auth0 from 'auth0'
+import { execSync } from 'child_process'
 import * as crypto from 'crypto'
 import * as express from 'express'
-import { execSync } from 'child_process'
+import * as knex from 'knex'
 
 import * as m from '@neoncity/common-js/marshall'
 import { MarshalFrom, MarshalWith } from '@neoncity/common-js/marshall'
@@ -29,6 +30,10 @@ async function main() {
 	clientId: config.AUTH0_CLIENT_ID,
 	domain: config.AUTH0_DOMAIN
     });
+    const conn = knex({
+        client: 'pg',
+    	connection: process.env.DATABASE_URL
+    });
     
     const authInfoMarshaller = new (MarshalFrom(AuthInfo))();
     const auth0ProfileMarshaller = new (MarshalFrom(Auth0Profile))();
@@ -47,7 +52,7 @@ async function main() {
 	    res.end();
 	    return;
 	}
-	
+
 	let authInfo: AuthInfo|null = null;
 	try {
 	    authInfo = authInfoMarshaller.extract(JSON.parse(authInfoSerialized));
@@ -74,14 +79,39 @@ async function main() {
 	const auth0UserIdHash = sha256hash.digest('hex');
 
 	// Lookup id hash in database
+	let dbUser: any|null = null;
+	try {
+	    const dbUsers = await conn('identity.user')
+		  .select([
+		      'id',
+		      'time_created',
+		      'time_last_updated',
+		      'time_removed',
+		      'role',
+		      'auth0_user_id_hash'])
+		  .where({auth0_user_id_hash: auth0UserIdHash})
+		  .limit(1);
+
+	    if (dbUsers.length == 0) {
+		res.status(404);
+		res.end();
+		return;
+	    }
+
+	    dbUser = dbUsers[0];
+	} catch (e) {
+	    res.status(500);
+	    res.end();
+	    return;
+	}
 
 	// Return joined value from auth0 and db
 
 	const user = new User(
-	    1,
-	    new Date(123151131),
-	    new Date(123151131),
-	    Role.Regular,
+	    dbUser['id'],
+	    new Date(dbUser['time_created']),
+	    new Date(dbUser['time_last_updated']),
+	    _dbRoleToRole(dbUser['role']),
 	    auth0UserIdHash,
 	    userProfile.name,
 	    userProfile.picture);
@@ -98,6 +128,15 @@ async function main() {
     app.listen(config.PORT, config.ADDRESS, () => {
 	console.log(`Started ... ${config.ADDRESS}:${config.PORT}`);
     });
+}
+
+function _dbRoleToRole(dbRole: 'regular'|'admin'): Role {
+    switch (dbRole) {
+    case 'regular':
+	return Role.Regular;
+    case 'admin':
+	return Role.Admin;
+    }
 }
 
 main();
