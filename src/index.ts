@@ -8,7 +8,7 @@ import * as m from '@neoncity/common-js/marshall'
 import { MarshalFrom, MarshalWith } from '@neoncity/common-js/marshall'
 import { AuthInfo, Role, IdentityResponse, User } from '@neoncity/identity-sdk-js'
 
-import * as config from './config';
+import * as config from './config'
 
 
 class Auth0Profile {

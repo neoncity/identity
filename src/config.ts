@@ -16,8 +16,8 @@ export let AUTH0_DOMAIN: string;
 if (isLocal(ENV)) {
     const secrets = JSON.parse(readFileSync(process.env.SECRETS_PATH, 'utf-8'));
 
-    AUTH0_CLIENT_ID = secrets["AUTH0_CLIENT_ID"];
-    AUTH0_DOMAIN = secrets["AUTH0_DOMAIN"];
+    AUTH0_CLIENT_ID = secrets['AUTH0_CLIENT_ID'];
+    AUTH0_DOMAIN = secrets['AUTH0_DOMAIN'];
 } else {
     AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID;
     AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
