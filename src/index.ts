@@ -6,7 +6,7 @@ import * as knex from 'knex'
 
 import * as m from '@neoncity/common-js/marshall'
 import { MarshalFrom, MarshalWith } from '@neoncity/common-js/marshall'
-import { AuthInfo, Role, User } from '@neoncity/identity-sdk-js'
+import { AuthInfo, Role, IdentityResponse, User } from '@neoncity/identity-sdk-js'
 
 import * as config from './config';
 
@@ -37,7 +37,7 @@ async function main() {
     
     const authInfoMarshaller = new (MarshalFrom(AuthInfo))();
     const auth0ProfileMarshaller = new (MarshalFrom(Auth0Profile))();
-    const userMarshaller = new (MarshalFrom(User))();
+    const identityResponseMarshaller = new (MarshalFrom(IdentityResponse))();
 
     app.use((_: express.Request, res: express.Response, next: () => void) => {
 	res.header('Access-Control-Allow-Origin', config.CLIENTS);
@@ -115,8 +115,11 @@ async function main() {
 	    auth0UserIdHash,
 	    userProfile.name,
 	    userProfile.picture);
+
+        const identityResponse = new IdentityResponse();
+        identityResponse.user = user;
 	
-        res.write(JSON.stringify(userMarshaller.pack(user)));
+        res.write(JSON.stringify(identityResponseMarshaller.pack(identityResponse)));
         res.end();
     });
 
@@ -189,7 +192,10 @@ async function main() {
 	    userProfile.name,
 	    userProfile.picture);
 	
-        res.write(JSON.stringify(userMarshaller.pack(user)));
+        const identityResponse = new IdentityResponse();
+        identityResponse.user = user;
+	
+        res.write(JSON.stringify(identityResponseMarshaller.pack(identityResponse)));
         res.end();
     });
 
