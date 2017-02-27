@@ -39,8 +39,12 @@ async function main() {
     const auth0ProfileMarshaller = new (MarshalFrom(Auth0Profile))();
     const identityResponseMarshaller = new (MarshalFrom(IdentityResponse))();
 
-    app.use((_: express.Request, res: express.Response, next: () => void) => {
-	res.header('Access-Control-Allow-Origin', config.CLIENTS);
+    app.use((req: express.Request, res: express.Response, next: () => void) => {
+        const origin = req.header('Origin');
+	if (config.CLIENTS.indexOf(origin) != -1) {
+	    res.header('Access-Control-Allow-Origin', origin);
+	}
+	
 	res.header('Access-Control-Allow-Headers', 'X-NeonCity-AuthInfo'); // TODO: make this better
 	next();
     });
