@@ -1,6 +1,6 @@
 {
   "name": "@neoncity/identity",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "The identity service.",
   "author": "NeonCity team",
   "scripts": {
@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@neoncity/common-js": "^0.14.0",
-    "@neoncity/common-server-js": "^0.0.0",
+    "@neoncity/common-server-js": "^0.0.1",
     "@neoncity/identity-sdk-js": "^0.5.1",
     "auth0": "^2.6.0",
     "es6-promise": "^4.0.5",

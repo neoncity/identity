@@ -1,11 +1,10 @@
 import * as auth0 from 'auth0'
-import { execSync } from 'child_process'
 import * as crypto from 'crypto'
 import * as express from 'express'
 import * as knex from 'knex'
 
 import * as m from '@neoncity/common-js/marshall'
-import { newCorsMiddleware } from '@neoncity/common-server-js'
+import { newCorsMiddleware, startupMigration } from '@neoncity/common-server-js'
 import { MarshalFrom, MarshalWith } from '@neoncity/common-js/marshall'
 import { AuthInfo, Role, IdentityResponse, User } from '@neoncity/identity-sdk-js'
 
@@ -24,7 +23,7 @@ class Auth0Profile {
 }
 
 async function main() {
-    execSync('./node_modules/.bin/knex migrate:latest');
+    startupMigration();
 
     const app = express();
     const auth0Client = new auth0.AuthenticationClient({
