@@ -5,6 +5,7 @@ import * as express from 'express'
 import * as knex from 'knex'
 
 import * as m from '@neoncity/common-js/marshall'
+import { newCorsMiddleware } from '@neoncity/common-server-js'
 import { MarshalFrom, MarshalWith } from '@neoncity/common-js/marshall'
 import { AuthInfo, Role, IdentityResponse, User } from '@neoncity/identity-sdk-js'
 
@@ -39,15 +40,7 @@ async function main() {
     const auth0ProfileMarshaller = new (MarshalFrom(Auth0Profile))();
     const identityResponseMarshaller = new (MarshalFrom(IdentityResponse))();
 
-    app.use((req: express.Request, res: express.Response, next: () => void) => {
-        const origin = req.header('Origin');
-	if (config.CLIENTS.indexOf(origin) != -1) {
-	    res.header('Access-Control-Allow-Origin', origin);
-	}
-	
-	res.header('Access-Control-Allow-Headers', 'X-NeonCity-AuthInfo'); // TODO: make this better
-	next();
-    });
+    app.use(newCorsMiddleware(config.CLIENTS));
 
     app.get('/user', async (req: express.Request, res: express.Response) => {
 	const authInfoSerialized: string|undefined = req.header('X-NeonCity-AuthInfo');
