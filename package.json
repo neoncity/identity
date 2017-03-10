@@ -1,6 +1,6 @@
 {
   "name": "@neoncity/identity",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "The identity service.",
   "author": "NeonCity team",
   "scripts": {
@@ -27,9 +27,9 @@
     "tsconfig.json": "f:tsconfig.json"
   },
   "dependencies": {
-    "@neoncity/common-js": "^0.14.0",
-    "@neoncity/common-server-js": "^0.0.1",
-    "@neoncity/identity-sdk-js": "^0.5.1",
+    "@neoncity/common-js": "^0.14.4",
+    "@neoncity/common-server-js": "^0.0.2",
+    "@neoncity/identity-sdk-js": "^0.5.2",
     "auth0": "^2.6.0",
     "es6-promise": "^4.0.5",
     "express": "^4.14.0",
