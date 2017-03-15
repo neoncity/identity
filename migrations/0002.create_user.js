@@ -2,7 +2,7 @@ exports.up = (knex, Promise) => knex.schema.raw(`
     CREATE TYPE Role AS ENUM ('regular', 'admin');
 
     CREATE TABLE identity.user (
-	id Serial PRIMARY KEY,
+	id Serial,
 	time_created Timestamp NOT NULL,
 	time_last_updated Timestamp NOT NULL,
 	time_removed Timestamp NULL,
