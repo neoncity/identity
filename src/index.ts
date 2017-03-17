@@ -2,23 +2,23 @@ import * as auth0 from 'auth0'
 import * as crypto from 'crypto'
 import * as express from 'express'
 import * as knex from 'knex'
+import { MarshalFrom, MarshalWith } from 'raynor'
+import * as r from 'raynor'
 
-import * as m from '@neoncity/common-js/marshall'
 import { newCorsMiddleware, startupMigration } from '@neoncity/common-server-js'
-import { MarshalFrom, MarshalWith } from '@neoncity/common-js/marshall'
 import { AuthInfo, Role, IdentityResponse, User } from '@neoncity/identity-sdk-js'
 
 import * as config from './config'
 
 
 class Auth0Profile {
-    @MarshalWith(m.StringMarshaller)
+    @MarshalWith(r.StringMarshaller)
     name: string;
 
-    @MarshalWith(m.UriMarshaller)
+    @MarshalWith(r.UriMarshaller)
     picture: string;
 
-    @MarshalWith(m.StringMarshaller)
+    @MarshalWith(r.StringMarshaller)
     user_id: string;
 }
 
