@@ -17,6 +17,8 @@ RUN apt-get update -y && \
 # Setup directory structure.
 
 RUN mkdir /neoncity
+RUN mkdir /neoncity/build
+RUN mkdir /neoncity/out
 RUN mkdir /neoncity/var
 
 # Setup users and groups.
