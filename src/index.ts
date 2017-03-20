@@ -5,8 +5,8 @@ import * as knex from 'knex'
 import { MarshalFrom, MarshalWith } from 'raynor'
 import * as r from 'raynor'
 
-import { newCorsMiddleware, startupMigration } from '@neoncity/common-server-js'
-import { AuthInfo, Role, IdentityResponse, User } from '@neoncity/identity-sdk-js'
+import { newAuthInfoMiddleware, newCorsMiddleware, newRequestTimeMiddleware, Request, startupMigration } from '@neoncity/common-server-js'
+import { Role, IdentityResponse, User } from '@neoncity/identity-sdk-js'
 
 import * as config from './config'
 
@@ -22,6 +22,7 @@ class Auth0Profile {
     user_id: string;
 }
 
+
 async function main() {
     startupMigration();
 
@@ -35,24 +36,15 @@ async function main() {
     	connection: process.env.DATABASE_URL
     });
     
-    const authInfoMarshaller = new (MarshalFrom(AuthInfo))();
     const auth0ProfileMarshaller = new (MarshalFrom(Auth0Profile))();
     const identityResponseMarshaller = new (MarshalFrom(IdentityResponse))();
 
+    app.use(newRequestTimeMiddleware());
     app.use(newCorsMiddleware(config.CLIENTS));
+    app.use(newAuthInfoMiddleware());
 
-    app.get('/user', async (req: express.Request, res: express.Response) => {
-	const authInfoSerialized: string|undefined = req.header('X-NeonCity-AuthInfo');
-	if (typeof authInfoSerialized == 'undefined') {
-	    res.status(401);
-	    res.end();
-	    return;
-	}
-
-	let authInfo: AuthInfo|null = null;
-	try {
-	    authInfo = authInfoMarshaller.extract(JSON.parse(authInfoSerialized));
-	} catch (e) {
+    app.get('/user', async (req: Request, res: express.Response) => {
+	if (req.authInfo == null) {
 	    res.status(400);
 	    res.end();
 	    return;
@@ -61,7 +53,7 @@ async function main() {
 	// Make a call to auth0
 	let userProfile: Auth0Profile|null = null;
 	try {
-	    const userProfileSerialized = await auth0Client.getProfile(authInfo.auth0AccessToken);
+	    const userProfileSerialized = await auth0Client.getProfile(req.authInfo.auth0AccessToken);
 	    userProfile = auth0ProfileMarshaller.extract(JSON.parse(userProfileSerialized));
 	} catch (e) {
 	    res.status(500);
@@ -119,20 +111,8 @@ async function main() {
         res.end();
     });
 
-    app.post('/user', async (req: express.Request, res: express.Response) => {
-	const rightNow = new Date(Date.now());
-	
-	const authInfoSerialized: string|undefined = req.header('X-NeonCity-AuthInfo');
-	if (typeof authInfoSerialized == 'undefined') {
-	    res.status(401);
-	    res.end();
-	    return;
-	}
-
-	let authInfo: AuthInfo|null = null;
-	try {
-	    authInfo = authInfoMarshaller.extract(JSON.parse(authInfoSerialized));
-	} catch (e) {
+    app.post('/user', async (req: Request, res: express.Response) => {
+	if (req.authInfo == null) {
 	    res.status(400);
 	    res.end();
 	    return;
@@ -141,7 +121,7 @@ async function main() {
 	// Make a call to auth0
 	let userProfile: Auth0Profile|null = null;
 	try {
-	    const userProfileSerialized = await auth0Client.getProfile(authInfo.auth0AccessToken);
+	    const userProfileSerialized = await auth0Client.getProfile(req.authInfo.auth0AccessToken);
 	    userProfile = auth0ProfileMarshaller.extract(JSON.parse(userProfileSerialized));
 	} catch (e) {
 	    res.status(500);
@@ -162,7 +142,7 @@ async function main() {
 		values (?, ?, ?, ?)
 	        on conflict (auth0_user_id_hash) do update set time_last_updated = excluded.time_last_updated 
 		returning id`,
-		[rightNow, rightNow, _roleToDbRole(Role.Regular), auth0UserIdHash])
+		[req.requestTime, req.requestTime, _roleToDbRole(Role.Regular), auth0UserIdHash])
 
 	    if (rawResponse.rowCount == 0) {
 	    	res.status(500);
@@ -181,8 +161,8 @@ async function main() {
 
 	const user = new User(
 	    dbUserId,
-	    rightNow,
-	    rightNow,
+	    req.requestTime,
+	    req.requestTime,
 	    Role.Regular,
 	    auth0UserIdHash,
 	    userProfile.name,
