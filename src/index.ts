@@ -1,4 +1,5 @@
 import * as auth0 from 'auth0'
+import { wrap } from 'async-middleware'
 import * as crypto from 'crypto'
 import * as express from 'express'
 import * as knex from 'knex'
@@ -43,8 +44,9 @@ async function main() {
     app.use(newCorsMiddleware(config.CLIENTS));
     app.use(newAuthInfoMiddleware());
 
-    app.get('/user', async (req: Request, res: express.Response) => {
+    app.get('/user', wrap(async (req: Request, res: express.Response) => {
 	if (req.authInfo == null) {
+	    console.log('No authInfo');
 	    res.status(400);
 	    res.end();
 	    return;
@@ -54,8 +56,17 @@ async function main() {
 	let userProfile: Auth0Profile|null = null;
 	try {
 	    const userProfileSerialized = await auth0Client.getProfile(req.authInfo.auth0AccessToken);
+
+	    if (userProfileSerialized == 'Unauthorized') {
+		console.log('Token was not accepted by Auth0');
+		res.status(401);
+		res.end();
+		return;
+	    }
+	    
 	    userProfile = auth0ProfileMarshaller.extract(JSON.parse(userProfileSerialized));
 	} catch (e) {
+	    console.log(`Auth0 error - ${e.toString()}`);
 	    res.status(500);
 	    res.end();
 	    return;
@@ -81,6 +92,7 @@ async function main() {
 		  .limit(1);
 
 	    if (dbUsers.length == 0) {
+		console.log('User does not exist');
 		res.status(404);
 		res.end();
 		return;
@@ -88,6 +100,7 @@ async function main() {
 
 	    dbUser = dbUsers[0];
 	} catch (e) {
+	    console.log(`DB retrieval error - ${e.toString()}`);
 	    res.status(500);
 	    res.end();
 	    return;
@@ -109,10 +122,11 @@ async function main() {
 	
         res.write(JSON.stringify(identityResponseMarshaller.pack(identityResponse)));
         res.end();
-    });
+    }));
 
-    app.post('/user', async (req: Request, res: express.Response) => {
+    app.post('/user', wrap(async (req: Request, res: express.Response) => {
 	if (req.authInfo == null) {
+	    console.log('No authInfo');
 	    res.status(400);
 	    res.end();
 	    return;
@@ -122,8 +136,17 @@ async function main() {
 	let userProfile: Auth0Profile|null = null;
 	try {
 	    const userProfileSerialized = await auth0Client.getProfile(req.authInfo.auth0AccessToken);
+
+	    if (userProfileSerialized == 'Unauthorized') {
+		console.log('Token was not accepted by Auth0');		
+		res.status(401);
+		res.end();
+		return;
+	    }
+	    
 	    userProfile = auth0ProfileMarshaller.extract(JSON.parse(userProfileSerialized));
 	} catch (e) {
+	    console.log(`Auth0 error - ${e.toString()}`);	    
 	    res.status(500);
 	    res.end();
 	    return;
@@ -145,6 +168,7 @@ async function main() {
 		[req.requestTime, req.requestTime, _roleToDbRole(Role.Regular), auth0UserIdHash])
 
 	    if (rawResponse.rowCount == 0) {
+		console.log('BD insertion error');
 	    	res.status(500);
 	    	res.end();
 	    	return;
@@ -152,6 +176,7 @@ async function main() {
 
 	    dbUserId = rawResponse.rows[0]['id'];
 	} catch (e) {
+	    console.log(`DB insertion error - ${e.toString()}`);
 	    res.status(500);
 	    res.end();
 	    return;
@@ -173,10 +198,10 @@ async function main() {
 	
         res.write(JSON.stringify(identityResponseMarshaller.pack(identityResponse)));
         res.end();
-    });
+    }));
 
     app.listen(config.PORT, config.ADDRESS, () => {
-	console.log(`Started ... ${config.ADDRESS}:${config.PORT}`);
+	console.log(`Started identity service on ${config.ADDRESS}:${config.PORT}`);
     });
 }
 
