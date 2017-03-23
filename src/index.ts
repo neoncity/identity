@@ -2,6 +2,7 @@ import * as auth0 from 'auth0'
 import { wrap } from 'async-middleware'
 import * as crypto from 'crypto'
 import * as express from 'express'
+import * as HttpStatus from 'http-status-codes'
 import * as knex from 'knex'
 import { MarshalFrom, MarshalWith } from 'raynor'
 import * as r from 'raynor'
@@ -47,7 +48,7 @@ async function main() {
     app.get('/user', wrap(async (req: Request, res: express.Response) => {
 	if (req.authInfo == null) {
 	    console.log('No authInfo');
-	    res.status(400);
+	    res.status(HttpStatus.BAD_REQUEST);
 	    res.end();
 	    return;
 	}
@@ -59,7 +60,7 @@ async function main() {
 
 	    if (userProfileSerialized == 'Unauthorized') {
 		console.log('Token was not accepted by Auth0');
-		res.status(401);
+		res.status(HttpStatus.UNAUTHORIZED);
 		res.end();
 		return;
 	    }
@@ -67,7 +68,7 @@ async function main() {
 	    userProfile = auth0ProfileMarshaller.extract(JSON.parse(userProfileSerialized));
 	} catch (e) {
 	    console.log(`Auth0 error - ${e.toString()}`);
-	    res.status(500);
+	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
 	    res.end();
 	    return;
 	}
@@ -93,7 +94,7 @@ async function main() {
 
 	    if (dbUsers.length == 0) {
 		console.log('User does not exist');
-		res.status(404);
+		res.status(HttpStatus.NOT_FOUND);
 		res.end();
 		return;
 	    }
@@ -101,7 +102,7 @@ async function main() {
 	    dbUser = dbUsers[0];
 	} catch (e) {
 	    console.log(`DB retrieval error - ${e.toString()}`);
-	    res.status(500);
+	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
 	    res.end();
 	    return;
 	}
@@ -127,7 +128,7 @@ async function main() {
     app.post('/user', wrap(async (req: Request, res: express.Response) => {
 	if (req.authInfo == null) {
 	    console.log('No authInfo');
-	    res.status(400);
+	    res.status(HttpStatus.BAD_REQUEST);
 	    res.end();
 	    return;
 	}
@@ -139,7 +140,7 @@ async function main() {
 
 	    if (userProfileSerialized == 'Unauthorized') {
 		console.log('Token was not accepted by Auth0');		
-		res.status(401);
+		res.status(HttpStatus.UNAUTHORIZED);
 		res.end();
 		return;
 	    }
@@ -147,7 +148,7 @@ async function main() {
 	    userProfile = auth0ProfileMarshaller.extract(JSON.parse(userProfileSerialized));
 	} catch (e) {
 	    console.log(`Auth0 error - ${e.toString()}`);	    
-	    res.status(500);
+	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
 	    res.end();
 	    return;
 	}
@@ -169,7 +170,7 @@ async function main() {
 
 	    if (rawResponse.rowCount == 0) {
 		console.log('BD insertion error');
-	    	res.status(500);
+	    	res.status(HttpStatus.INTERNAL_SERVER_ERROR);
 	    	res.end();
 	    	return;
 	    }
@@ -177,7 +178,7 @@ async function main() {
 	    dbUserId = rawResponse.rows[0]['id'];
 	} catch (e) {
 	    console.log(`DB insertion error - ${e.toString()}`);
-	    res.status(500);
+	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
 	    res.end();
 	    return;
 	}
