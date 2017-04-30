@@ -7,8 +7,9 @@ import * as knex from 'knex'
 import { MarshalFrom, MarshalWith } from 'raynor'
 import * as r from 'raynor'
 
+import { isLocal } from '@neoncity/common-js/env'
 import { newAuthInfoMiddleware, newCorsMiddleware, newRequestTimeMiddleware, Request, startupMigration } from '@neoncity/common-server-js'
-import { Role, IdentityResponse, User } from '@neoncity/identity-sdk-js'
+import { Role, IdentityResponse, User, UserEventType } from '@neoncity/identity-sdk-js'
 
 import * as config from './config'
 
@@ -68,6 +69,10 @@ async function main() {
 	    userProfile = auth0ProfileMarshaller.extract(JSON.parse(userProfileSerialized));
 	} catch (e) {
 	    console.log(`Auth0 error - ${e.toString()}`);
+            if (isLocal(config.ENV)) {
+                console.log(e);
+            }
+            
 	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
 	    res.end();
 	    return;
@@ -102,6 +107,10 @@ async function main() {
 	    dbUser = dbUsers[0];
 	} catch (e) {
 	    console.log(`DB retrieval error - ${e.toString()}`);
+            if (isLocal(config.ENV)) {
+                console.log(e);
+            }
+            
 	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
 	    res.end();
 	    return;
@@ -113,7 +122,7 @@ async function main() {
 	    dbUser['id'],
 	    new Date(dbUser['time_created']),
 	    new Date(dbUser['time_last_updated']),
-	    _dbRoleToRole(dbUser['role']),
+	    dbUser['role'],
 	    auth0UserIdHash,
 	    userProfile.name,
 	    userProfile.picture);
@@ -147,7 +156,11 @@ async function main() {
 	    
 	    userProfile = auth0ProfileMarshaller.extract(JSON.parse(userProfileSerialized));
 	} catch (e) {
-	    console.log(`Auth0 error - ${e.toString()}`);	    
+	    console.log(`Auth0 error - ${e.toString()}`);
+            if (isLocal(config.ENV)) {
+                console.log(e);
+            }
+            
 	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
 	    res.end();
 	    return;
@@ -160,24 +173,51 @@ async function main() {
 
 	// Insert in database
 	let dbUserId: number = -1;
+        let dbUserEventId: number = -1;
 	try {
-	    const rawResponse = await conn.raw(`
-		insert into identity.user (time_created, time_last_updated, role, auth0_user_id_hash)
-		values (?, ?, ?, ?)
-	        on conflict (auth0_user_id_hash) do update set time_last_updated = excluded.time_last_updated 
-		returning id`,
-		[req.requestTime, req.requestTime, _roleToDbRole(Role.Regular), auth0UserIdHash])
+            await conn.transaction(async (trx) => {
+	        const rawResponse = await trx.raw(`
+		    insert into identity.user (time_created, time_last_updated, role, auth0_user_id_hash)
+                    values (?, ?, ?, ?)
+	            on conflict (auth0_user_id_hash) do update set time_last_updated = excluded.time_last_updated 
+		    returning id, time_created, time_last_updated`,
+  		    [req.requestTime, req.requestTime, Role.Regular, auth0UserIdHash])
 
-	    if (rawResponse.rowCount == 0) {
-		console.log('BD insertion error');
-	    	res.status(HttpStatus.INTERNAL_SERVER_ERROR);
-	    	res.end();
-	    	return;
-	    }
+	        if (rawResponse.rowCount == 0) {
+		    console.log('BD insertion error');
+	    	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
+	    	    res.end();
+	    	    return;
+	        }
 
-	    dbUserId = rawResponse.rows[0]['id'];
+	        dbUserId = rawResponse.rows[0]['id'];
+
+                const eventType = rawResponse.rows[0]['time_created'] == rawResponse.rows[0]['time_last_updated']
+                      ? UserEventType.Created
+                      : UserEventType.Recreated;
+
+                const dbUserEventIds = await trx
+                      .from('identity.user_event')
+                      .returning('id')
+                      .insert({
+                          'type': eventType,
+                          'timestamp': req.requestTime,
+                          'data': 'null',
+                          'user_id': dbUserId
+                      });
+
+                if (dbUserEventIds.length == 0) {
+                    throw new Error('Failed to insert creation event');
+                }
+
+                dbUserEventId = dbUserEventIds[0];
+            });
 	} catch (e) {
 	    console.log(`DB insertion error - ${e.toString()}`);
+            if (isLocal(config.ENV)) {
+                console.log(e);
+            }
+                        
 	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
 	    res.end();
 	    return;
@@ -206,27 +246,5 @@ async function main() {
     });
 }
 
-
-function _roleToDbRole(role: Role): 'regular'|'admin' {
-    switch (role) {
-    case Role.Regular:
-	return 'regular';
-    case Role.Admin:
-	return 'admin';
-    case Role.Unknown:
-    default:
-	throw new Error('Invalid role');
-    }
-}
-
-
-function _dbRoleToRole(dbRole: 'regular'|'admin'): Role {
-    switch (dbRole) {
-    case 'regular':
-	return Role.Regular;
-    case 'admin':
-	return Role.Admin;
-    }
-}
 
 main();
