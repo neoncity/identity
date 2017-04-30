@@ -9,7 +9,7 @@ import * as r from 'raynor'
 
 import { isLocal } from '@neoncity/common-js/env'
 import { newAuthInfoMiddleware, newCorsMiddleware, newRequestTimeMiddleware, Request, startupMigration } from '@neoncity/common-server-js'
-import { Role, UserResponse, User, UserEventsResponse, UserEvent, UserEventType } from '@neoncity/identity-sdk-js'
+import { Role, UserResponse, User, UserEventsResponse, UserEvent, UserEventType, UserState } from '@neoncity/identity-sdk-js'
 
 import * as config from './config'
 
@@ -42,6 +42,23 @@ async function main() {
     const auth0ProfileMarshaller = new (MarshalFrom(Auth0Profile))();
     const userResponseMarshaller = new (MarshalFrom(UserResponse))();
     const userEventsResponseMarshaller = new (MarshalFrom(UserEventsResponse))();    
+
+    const userFields = [
+        'identity.user.id as user_id',
+        'identity.user.state as user_state',
+        'identity.user.role as user_role',
+        'identity.user.auth0_user_id_hash as user_auth0_user_id_hash',
+        'identity.user.time_created as user_time_created',
+        'identity.user.time_last_updated as user_time_last_updated',
+        'identity.user.time_removed as user_time_removed'
+    ];
+
+    const userEventFields = [
+        'identity.user_event.id as user_event_id',
+        'identity.user_event.type as user_event_type',
+        'identity.user_event.timestamp as user_event_timestamp',
+        'identity.user_event.data as user_event_data'
+    ];
 
     app.use(newRequestTimeMiddleware());
     app.use(newCorsMiddleware(config.CLIENTS));
@@ -88,13 +105,7 @@ async function main() {
 	let dbUser: any|null = null;
 	try {
 	    const dbUsers = await conn('identity.user')
-		  .select([
-		      'id',
-		      'time_created',
-		      'time_last_updated',
-		      'time_removed',
-		      'role',
-		      'auth0_user_id_hash'])
+		  .select(userFields)
 		  .where({auth0_user_id_hash: auth0UserIdHash})
 		  .limit(1);
 
@@ -120,11 +131,12 @@ async function main() {
 	// Return joined value from auth0 and db
 
 	const user = new User(
-	    dbUser['id'],
-	    new Date(dbUser['time_created']),
-	    new Date(dbUser['time_last_updated']),
-	    dbUser['role'],
+	    dbUser['user_id'],
+            dbUser['user_state'],
+	    dbUser['user_role'],
 	    auth0UserIdHash,
+	    new Date(dbUser['user_time_created']),
+	    new Date(dbUser['user_time_last_updated']),
 	    userProfile.name,
 	    userProfile.picture);
 
@@ -178,11 +190,11 @@ async function main() {
 	try {
             await conn.transaction(async (trx) => {
 	        const rawResponse = await trx.raw(`
-		    insert into identity.user (time_created, time_last_updated, role, auth0_user_id_hash)
-                    values (?, ?, ?, ?)
+                    insert into identity.user (state, role, auth0_user_id_hash, time_created, time_last_updated)
+                    values (?, ?, ?, ?, ?)
 	            on conflict (auth0_user_id_hash) do update set time_last_updated = excluded.time_last_updated 
 		    returning id, time_created, time_last_updated`,
-  		    [req.requestTime, req.requestTime, Role.Regular, auth0UserIdHash])
+                    [UserState.ActiveAndLinkedWithAuth0, Role.Regular, auth0UserIdHash, req.requestTime, req.requestTime])
 
 	        if (rawResponse.rowCount == 0) {
 		    console.log('BD insertion error');
@@ -228,10 +240,11 @@ async function main() {
 
 	const user = new User(
 	    dbUserId,
-	    req.requestTime,
-	    req.requestTime,
+            UserState.ActiveAndLinkedWithAuth0,
 	    Role.Regular,
 	    auth0UserIdHash,
+	    req.requestTime,
+	    req.requestTime,
 	    userProfile.name,
 	    userProfile.picture);
 	
@@ -297,11 +310,7 @@ async function main() {
 	    const dbUserId = dbUsers[0]['id'];
 
             dbUserEvents = await conn('identity.user_event')
-                .select([
-                    'id',
-                    'type',
-                    'timestamp',
-                    'data'])
+                .select(userEventFields)
                 .where({user_id: dbUserId})
                 .orderBy('timestamp', 'asc') as any[];
 
@@ -326,10 +335,10 @@ async function main() {
 
         const userEvents = dbUserEvents.map(dbUE => {
             const userEvent = new UserEvent();
-            userEvent.id = dbUE['id'];
-            userEvent.type = dbUE['type'];
-            userEvent.timestamp = dbUE['timestamp'];
-            userEvent.data = dbUE['data'];
+            userEvent.id = dbUE['user_event_id'];
+            userEvent.type = dbUE['user_event_type'];
+            userEvent.timestamp = dbUE['user_event_timestamp'];
+            userEvent.data = dbUE['user_event_data'];
             return userEvent;
         });
 
