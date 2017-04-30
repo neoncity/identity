@@ -9,7 +9,7 @@ import * as r from 'raynor'
 
 import { isLocal } from '@neoncity/common-js/env'
 import { newAuthInfoMiddleware, newCorsMiddleware, newRequestTimeMiddleware, Request, startupMigration } from '@neoncity/common-server-js'
-import { Role, IdentityResponse, User, UserEventType } from '@neoncity/identity-sdk-js'
+import { Role, UserResponse, User, UserEventsResponse, UserEvent, UserEventType } from '@neoncity/identity-sdk-js'
 
 import * as config from './config'
 
@@ -40,7 +40,8 @@ async function main() {
     });
     
     const auth0ProfileMarshaller = new (MarshalFrom(Auth0Profile))();
-    const identityResponseMarshaller = new (MarshalFrom(IdentityResponse))();
+    const userResponseMarshaller = new (MarshalFrom(UserResponse))();
+    const userEventsResponseMarshaller = new (MarshalFrom(UserEventsResponse))();    
 
     app.use(newRequestTimeMiddleware());
     app.use(newCorsMiddleware(config.CLIENTS));
@@ -127,10 +128,10 @@ async function main() {
 	    userProfile.name,
 	    userProfile.picture);
 
-        const identityResponse = new IdentityResponse();
-        identityResponse.user = user;
+        const userResponse = new UserResponse();
+        userResponse.user = user;
 	
-        res.write(JSON.stringify(identityResponseMarshaller.pack(identityResponse)));
+        res.write(JSON.stringify(userResponseMarshaller.pack(userResponse)));
         res.end();
     }));
 
@@ -234,12 +235,110 @@ async function main() {
 	    userProfile.name,
 	    userProfile.picture);
 	
-        const identityResponse = new IdentityResponse();
-        identityResponse.user = user;
+        const userResponse = new UserResponse();
+        userResponse.user = user;
 	
-        res.write(JSON.stringify(identityResponseMarshaller.pack(identityResponse)));
+        res.write(JSON.stringify(userResponseMarshaller.pack(userResponse)));
         res.end();
     }));
+
+    app.get('/user/events', wrap(async (req: Request, res: express.Response) => {
+	if (req.authInfo == null) {
+	    console.log('No authInfo');
+	    res.status(HttpStatus.BAD_REQUEST);
+	    res.end();
+	    return;
+	}
+
+	// Make a call to auth0
+	let userProfile: Auth0Profile|null = null;
+	try {
+	    const userProfileSerialized = await auth0Client.getProfile(req.authInfo.auth0AccessToken);
+
+	    if (userProfileSerialized == 'Unauthorized') {
+		console.log('Token was not accepted by Auth0');
+		res.status(HttpStatus.UNAUTHORIZED);
+		res.end();
+		return;
+	    }
+	    
+	    userProfile = auth0ProfileMarshaller.extract(JSON.parse(userProfileSerialized));
+	} catch (e) {
+	    console.log(`Auth0 error - ${e.toString()}`);
+            if (isLocal(config.ENV)) {
+                console.log(e);
+            }
+            
+	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
+	    res.end();
+	    return;
+	}
+
+	// Compute hash of user_id.
+	const sha256hash = crypto.createHash('sha256');
+	sha256hash.update(userProfile.user_id);
+	const auth0UserIdHash = sha256hash.digest('hex');
+
+	// Lookup id hash in database
+        let dbUserEvents: any[]|null = null;
+	try {
+	    const dbUsers = await conn('identity.user')
+		  .select(['id'])
+		  .where({auth0_user_id_hash: auth0UserIdHash})
+		  .limit(1);
+
+	    if (dbUsers.length == 0) {
+		console.log('User does not exist');
+		res.status(HttpStatus.NOT_FOUND);
+		res.end();
+		return;
+	    }
+
+	    const dbUserId = dbUsers[0]['id'];
+
+            dbUserEvents = await conn('identity.user_event')
+                .select([
+                    'id',
+                    'type',
+                    'timestamp',
+                    'data'])
+                .where({user_id: dbUserId})
+                .orderBy('timestamp', 'asc') as any[];
+
+            if (dbUserEvents.length == 0) {
+		console.log('User does not have any events');
+		res.status(HttpStatus.NOT_FOUND);
+		res.end();
+		return;
+            }
+	} catch (e) {
+	    console.log(`DB retrieval error - ${e.toString()}`);
+            if (isLocal(config.ENV)) {
+                console.log(e);
+            }
+            
+	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
+	    res.end();
+	    return;
+	}
+
+	// Return joined value from auth0 and db
+
+        const userEvents = dbUserEvents.map(dbUE => {
+            const userEvent = new UserEvent();
+            userEvent.id = dbUE['id'];
+            userEvent.type = dbUE['type'];
+            userEvent.timestamp = dbUE['timestamp'];
+            userEvent.data = dbUE['data'];
+            return userEvent;
+        });
+
+        const userEventsResponse = new UserEventsResponse();
+        userEventsResponse.events = userEvents;
+	
+        res.write(JSON.stringify(userEventsResponseMarshaller.pack(userEventsResponse)));
+        res.end();
+    }));    
 
     app.listen(config.PORT, config.ADDRESS, () => {
 	console.log(`Started identity service on ${config.ADDRESS}:${config.PORT}`);
