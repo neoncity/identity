@@ -186,7 +186,6 @@ async function main() {
 
 	// Insert in database
 	let dbUserId: number = -1;
-        let dbUserEventId: number = -1;
 	try {
             await conn.transaction(async (trx) => {
 	        const rawResponse = await trx.raw(`
@@ -222,8 +221,6 @@ async function main() {
                 if (dbUserEventIds.length == 0) {
                     throw new Error('Failed to insert creation event');
                 }
-
-                dbUserEventId = dbUserEventIds[0];
             });
 	} catch (e) {
 	    console.log(`DB insertion error - ${e.toString()}`);
