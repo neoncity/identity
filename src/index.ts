@@ -21,8 +21,8 @@ class Auth0Profile {
     @MarshalWith(r.UriMarshaller)
     picture: string;
 
-    @MarshalWith(r.StringMarshaller)
-    user_id: string;
+    @MarshalWith(r.StringMarshaller, 'user_id')
+    userId: string;
 }
 
 
@@ -98,7 +98,7 @@ async function main() {
 
 	// Compute hash of user_id.
 	const sha256hash = crypto.createHash('sha256');
-	sha256hash.update(userProfile.user_id);
+	sha256hash.update(userProfile.userId);
 	const auth0UserIdHash = sha256hash.digest('hex');
 
 	// Lookup id hash in database
@@ -181,7 +181,7 @@ async function main() {
 
 	// Compute hash of user_id.
 	const sha256hash = crypto.createHash('sha256');
-	sha256hash.update(userProfile.user_id);
+	sha256hash.update(userProfile.userId);
 	const auth0UserIdHash = sha256hash.digest('hex');
 
 	// Insert in database
@@ -286,7 +286,7 @@ async function main() {
 
 	// Compute hash of user_id.
 	const sha256hash = crypto.createHash('sha256');
-	sha256hash.update(userProfile.user_id);
+	sha256hash.update(userProfile.userId);
 	const auth0UserIdHash = sha256hash.digest('hex');
 
 	// Lookup id hash in database
