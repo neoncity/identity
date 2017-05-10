@@ -214,7 +214,7 @@ async function main() {
                       .insert({
                           'type': eventType,
                           'timestamp': req.requestTime,
-                          'data': 'null',
+                          'data': null,
                           'user_id': dbUserId
                       });
 
