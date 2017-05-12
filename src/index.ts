@@ -18,7 +18,7 @@ class Auth0Profile {
     @MarshalWith(r.StringMarshaller)
     name: string;
 
-    @MarshalWith(r.UriMarshaller)
+    @MarshalWith(r.SecureWebUriMarshaller)
     picture: string;
 
     @MarshalWith(r.StringMarshaller, 'user_id')
