@@ -4,27 +4,17 @@ import * as crypto from 'crypto'
 import * as express from 'express'
 import * as HttpStatus from 'http-status-codes'
 import * as knex from 'knex'
-import { MarshalFrom, MarshalWith } from 'raynor'
-import * as r from 'raynor'
+import { MarshalFrom } from 'raynor'
 
-import { isLocal } from '@neoncity/common-js/env'
-import { newAuthInfoMiddleware, newCorsMiddleware, newRequestTimeMiddleware, Request, startupMigration } from '@neoncity/common-server-js'
+import { isLocal } from '@neoncity/common-js'
+import { newAuthInfoMiddleware, newCorsMiddleware, newRequestTimeMiddleware, startupMigration } from '@neoncity/common-server-js'
 import { Role, UserResponse, User, UserEventsResponse, UserEvent, UserEventType, UserState } from '@neoncity/identity-sdk-js'
 
 import * as config from './config'
 
 
-class Auth0Profile {
-    @MarshalWith(r.StringMarshaller)
-    name: string;
-
-    @MarshalWith(r.SecureWebUriMarshaller)
-    picture: string;
-
-    @MarshalWith(r.StringMarshaller, 'user_id')
-    userId: string;
-}
-
+import { IdentityRequest } from './identity-request'
+import { newAuth0Middleware } from './auth0-middleware'
 
 async function main() {
     startupMigration();
@@ -39,7 +29,6 @@ async function main() {
     	connection: process.env.DATABASE_URL
     });
     
-    const auth0ProfileMarshaller = new (MarshalFrom(Auth0Profile))();
     const userResponseMarshaller = new (MarshalFrom(UserResponse))();
     const userEventsResponseMarshaller = new (MarshalFrom(UserEventsResponse))();    
 
@@ -63,42 +52,12 @@ async function main() {
     app.use(newRequestTimeMiddleware());
     app.use(newCorsMiddleware(config.CLIENTS));
     app.use(newAuthInfoMiddleware());
+    app.use(newAuth0Middleware(config.ENV, auth0Client));
 
-    app.get('/user', wrap(async (req: Request, res: express.Response) => {
-	if (req.authInfo == null) {
-	    console.log('No authInfo');
-	    res.status(HttpStatus.BAD_REQUEST);
-	    res.end();
-	    return;
-	}
-
-	// Make a call to auth0
-	let userProfile: Auth0Profile|null = null;
-	try {
-	    const userProfileSerialized = await auth0Client.getProfile(req.authInfo.auth0AccessToken);
-
-	    if (userProfileSerialized == 'Unauthorized') {
-		console.log('Token was not accepted by Auth0');
-		res.status(HttpStatus.UNAUTHORIZED);
-		res.end();
-		return;
-	    }
-	    
-	    userProfile = auth0ProfileMarshaller.extract(JSON.parse(userProfileSerialized));
-	} catch (e) {
-	    console.log(`Auth0 error - ${e.toString()}`);
-            if (isLocal(config.ENV)) {
-                console.log(e);
-            }
-            
-	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
-	    res.end();
-	    return;
-	}
-
+    app.get('/user', wrap(async (req: IdentityRequest, res: express.Response) => {
 	// Compute hash of user_id.
 	const sha256hash = crypto.createHash('sha256');
-	sha256hash.update(userProfile.userId);
+	sha256hash.update(req.auth0Profile.userId);
 	const auth0UserIdHash = sha256hash.digest('hex');
 
 	// Lookup id hash in database
@@ -137,8 +96,8 @@ async function main() {
 	    auth0UserIdHash,
 	    new Date(dbUser['user_time_created']),
 	    new Date(dbUser['user_time_last_updated']),
-	    userProfile.name,
-	    userProfile.picture);
+	    req.auth0Profile.name,
+	    req.auth0Profile.picture);
 
         const userResponse = new UserResponse();
         userResponse.user = user;
@@ -147,41 +106,10 @@ async function main() {
         res.end();
     }));
 
-    app.post('/user', wrap(async (req: Request, res: express.Response) => {
-	if (req.authInfo == null) {
-	    console.log('No authInfo');
-	    res.status(HttpStatus.BAD_REQUEST);
-	    res.end();
-	    return;
-	}
-
-	// Make a call to auth0
-	let userProfile: Auth0Profile|null = null;
-	try {
-	    const userProfileSerialized = await auth0Client.getProfile(req.authInfo.auth0AccessToken);
-
-	    if (userProfileSerialized == 'Unauthorized') {
-		console.log('Token was not accepted by Auth0');		
-		res.status(HttpStatus.UNAUTHORIZED);
-		res.end();
-		return;
-	    }
-	    
-	    userProfile = auth0ProfileMarshaller.extract(JSON.parse(userProfileSerialized));
-	} catch (e) {
-	    console.log(`Auth0 error - ${e.toString()}`);
-            if (isLocal(config.ENV)) {
-                console.log(e);
-            }
-            
-	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
-	    res.end();
-	    return;
-	}
-
+    app.post('/user', wrap(async (req: IdentityRequest, res: express.Response) => {
 	// Compute hash of user_id.
 	const sha256hash = crypto.createHash('sha256');
-	sha256hash.update(userProfile.userId);
+	sha256hash.update(req.auth0Profile.userId);
 	const auth0UserIdHash = sha256hash.digest('hex');
 
 	// Insert in database
@@ -242,8 +170,8 @@ async function main() {
 	    auth0UserIdHash,
 	    req.requestTime,
 	    req.requestTime,
-	    userProfile.name,
-	    userProfile.picture);
+	    req.auth0Profile.name,
+	    req.auth0Profile.picture);
 	
         const userResponse = new UserResponse();
         userResponse.user = user;
@@ -252,41 +180,10 @@ async function main() {
         res.end();
     }));
 
-    app.get('/user/events', wrap(async (req: Request, res: express.Response) => {
-	if (req.authInfo == null) {
-	    console.log('No authInfo');
-	    res.status(HttpStatus.BAD_REQUEST);
-	    res.end();
-	    return;
-	}
-
-	// Make a call to auth0
-	let userProfile: Auth0Profile|null = null;
-	try {
-	    const userProfileSerialized = await auth0Client.getProfile(req.authInfo.auth0AccessToken);
-
-	    if (userProfileSerialized == 'Unauthorized') {
-		console.log('Token was not accepted by Auth0');
-		res.status(HttpStatus.UNAUTHORIZED);
-		res.end();
-		return;
-	    }
-	    
-	    userProfile = auth0ProfileMarshaller.extract(JSON.parse(userProfileSerialized));
-	} catch (e) {
-	    console.log(`Auth0 error - ${e.toString()}`);
-            if (isLocal(config.ENV)) {
-                console.log(e);
-            }
-            
-	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
-	    res.end();
-	    return;
-	}
-
+    app.get('/user/events', wrap(async (req: IdentityRequest, res: express.Response) => {
 	// Compute hash of user_id.
 	const sha256hash = crypto.createHash('sha256');
-	sha256hash.update(userProfile.userId);
+	sha256hash.update(req.auth0Profile.userId);
 	const auth0UserIdHash = sha256hash.digest('hex');
 
 	// Lookup id hash in database
