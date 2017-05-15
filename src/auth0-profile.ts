@@ -1,3 +1,4 @@
+import * as crypto from 'crypto'
 import * as r from 'raynor'
 import { MarshalWith } from 'raynor'
 
@@ -11,4 +12,10 @@ export class Auth0Profile {
 
     @MarshalWith(r.StringMarshaller, 'user_id')
     userId: string;
+
+    getUserIdHash(): string {
+	const sha256hash = crypto.createHash('sha256');
+	sha256hash.update(this.userId);
+	return sha256hash.digest('hex');	
+    }
 }
