@@ -85,7 +85,8 @@ export class Repository {
 	    dbUserTimeCreated,
 	    requestTime,
 	    auth0Profile.name,
-	    auth0Profile.picture);
+	    auth0Profile.picture,
+	    auth0Profile.language);
     }
     
     async getUser(auth0Profile: Auth0Profile): Promise<User> {
@@ -111,7 +112,8 @@ export class Repository {
 	    new Date(dbUser['user_time_created']),
 	    new Date(dbUser['user_time_last_updated']),
 	    auth0Profile.name,
-	    auth0Profile.picture);
+	    auth0Profile.picture,
+	    auth0Profile.language);
     }
 
     async getUserEvents(auth0Profile: Auth0Profile): Promise<UserEvent[]> {
