@@ -56,9 +56,9 @@ export class Repository {
 	    const rawResponse = await trx.raw(`
                     insert into identity.user (state, role, auth0_user_id_hash, time_created, time_last_updated)
                     values (?, ?, ?, ?, ?)
-	            on conflict (auth0_user_id_hash) do update set time_last_updated = excluded.time_last_updated, state=${UserState.ActiveAndLinkedWithAuth0}
+	            on conflict (auth0_user_id_hash) do update set time_last_updated = excluded.time_last_updated, state=${UserState.Active}
 		    returning id, time_created`,
-	            [UserState.ActiveAndLinkedWithAuth0, Role.Regular, userIdHash, requestTime, requestTime]);
+	            [UserState.Active, Role.Regular, userIdHash, requestTime, requestTime]);
 
 	    dbUserId = rawResponse.rows[0]['id'];
 	    dbUserTimeCreated = rawResponse.rows[0]['time_created'];
@@ -79,7 +79,7 @@ export class Repository {
 
 	return new User(
 	    dbUserId,
-            UserState.ActiveAndLinkedWithAuth0,
+            UserState.Active,
 	    Role.Regular,
 	    userIdHash,
 	    dbUserTimeCreated,
@@ -95,7 +95,7 @@ export class Repository {
 	// Lookup id hash in database
 	const dbUsers = await this._conn('identity.user')
 	      .select(Repository._userFields)
-	      .where({auth0_user_id_hash: userIdHash, state: UserState.ActiveAndLinkedWithAuth0})
+	      .where({auth0_user_id_hash: userIdHash, state: UserState.Active})
 	      .limit(1);
 
 	if (dbUsers.length == 0) {
@@ -121,7 +121,7 @@ export class Repository {
 
 	const dbUsers = await this._conn('identity.user')
 	      .select(['id'])
-	      .where({auth0_user_id_hash: userIdHash, state: UserState.ActiveAndLinkedWithAuth0})
+	      .where({auth0_user_id_hash: userIdHash, state: UserState.Active})
 	      .limit(1);
 
 	if (dbUsers.length == 0) {

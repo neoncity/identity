@@ -1,6 +1,6 @@
 {
   "name": "@neoncity/identity",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "description": "The identity service.",
   "author": "NeonCity team",
   "scripts": {
@@ -28,8 +28,8 @@
   },
   "dependencies": {
     "@neoncity/common-js": "~1",
-    "@neoncity/common-server-js": "~0",
-    "@neoncity/identity-sdk-js": "~1",
+    "@neoncity/common-server-js": "~1",
+    "@neoncity/identity-sdk-js": "~2",
     "async-middleware": "=1.0.2",
     "auth0": "=2.6.0",
     "es6-promise": "=4.0.5",
@@ -38,7 +38,7 @@
     "isomorphic-fetch": "=2.2.1",
     "knex": "=0.12.6",
     "pg": "=6.1.2",
-    "raynor": "=0.7.2"
+    "raynor": "=0.8.0"
   },
   "devDependencies": {
     "@neoncity/togemfury": "~0",
