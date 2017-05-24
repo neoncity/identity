@@ -3,7 +3,7 @@ import { wrap } from 'async-middleware'
 import * as express from 'express'
 import * as HttpStatus from 'http-status-codes'
 import * as knex from 'knex'
-import { MarshalFrom } from 'raynor'
+import { MarshalFrom, UuidMarshaller } from 'raynor'
 
 import { isLocal } from '@neoncity/common-js'
 import { newAuthInfoMiddleware, newCorsMiddleware, newRequestTimeMiddleware, startupMigration } from '@neoncity/common-server-js'
@@ -29,6 +29,7 @@ async function main() {
     });
     const repository = new Repository(conn);
 
+    const uuidMarshaller = new UuidMarshaller();
     const sessionResponseMarshaller = new (MarshalFrom(SessionResponse))();
     const userResponseMarshaller = new (MarshalFrom(UserResponse))();
     const userEventsResponseMarshaller = new (MarshalFrom(UserEventsResponse))();
@@ -55,7 +56,45 @@ async function main() {
             }
                         
 	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
-	    res.end();	    
+	    res.end();
+	}
+    }));
+
+    sessionsRouter.get('/:sessionId', wrap(async (req: IdentityRequest, res: express.Response) => {
+	let sessionId: string|null = null;
+	try {
+	    sessionId = uuidMarshaller.extract(req.params['sessionId']);
+	} catch (e) {
+	    console.log('Invalid session id');
+	    res.status(HttpStatus.BAD_REQUEST);
+	    res.end();
+	    return;
+	}
+	
+	try {
+	    const session = await repository.getSession(sessionId, req.requestTime);
+
+            const sessionResponse = new SessionResponse();
+            sessionResponse.session = session;
+	
+            res.write(JSON.stringify(sessionResponseMarshaller.pack(sessionResponse)));
+	    res.status(HttpStatus.OK);
+            res.end();
+	} catch (e) {
+	    if (e.name == 'SessionNotFoundError') {
+		console.log(e.message);
+		res.status(HttpStatus.NOT_FOUND);
+		res.end();
+		return;
+	    }
+	    
+	    console.log(`DB retrieval error - ${e.toString()}`);
+	    if (isLocal(config.ENV)) {
+                console.log(e);
+	    }
+	    
+	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
+	    res.end();
 	}
     }));
 

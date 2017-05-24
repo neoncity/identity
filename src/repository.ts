@@ -23,6 +23,14 @@ export class RepositoryError extends Error {
 }
 
 
+export class SessionNotFoundError extends RepositoryError {
+    constructor(message: string) {
+	super(message);
+	this.name = 'SessionNotFoundError';
+    }
+}
+
+
 export class UserNotFoundError extends RepositoryError {
     constructor(message: string) {
 	super(message);
@@ -34,6 +42,15 @@ export class UserNotFoundError extends RepositoryError {
 
 export class Repository {
     private static readonly _SESSION_MAX_LENGTH_IN_DAYS = 30;
+    
+    private static readonly _sessionFields = [
+	'identity.session.id as session_id',
+	'identity.session.state as session_state',
+	'identity.session.time_expires as session_time_expires',
+	'identity.session.time_created as session_time_created',
+	'identity.session.time_last_updated as session_time_last_updated',
+	'identity.session.time_removed as session_time_removed'
+    ];    
     
     private static readonly _userFields = [
 	'identity.user.id as user_id',
@@ -92,6 +109,33 @@ export class Repository {
 	session.user = null;
 	session.timeCreated = requestTime;
 	session.timeLastUpdated = requestTime;
+
+	return session;
+    }
+
+    async getSession(id: string, requestTime: Date): Promise<Session> {
+	const dbSessions = await this._conn('identity.session')
+	      .select(Repository._sessionFields)
+	      .where({id: id, state: SessionState.Active})
+	      .limit(1);
+
+	if (dbSessions.length == 0) {
+	    throw new SessionNotFoundError('Session does not exist');
+	}
+
+	const dbSession = dbSessions[0];
+
+	const session = new Session();
+	session.id = id;
+	session.state = dbSession['session_state'];
+	session.timeExpires = dbSession['session_time_expires'];
+	session.user = null;
+	session.timeCreated = dbSession['session_time_created'];
+	session.timeLastUpdated = dbSession['session_time_last_updated'];
+
+	if (requestTime > session.timeExpires) {
+	    throw new SessionNotFoundError('Session does not exist');
+	}
 
 	return session;
     }
