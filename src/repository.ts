@@ -1,6 +1,16 @@
 import * as knex from 'knex'
+import * as moment from 'moment'
+import * as uuid from 'uuid'
 
-import { Role, User, UserEvent, UserEventType, UserState } from '@neoncity/identity-sdk-js'
+import {
+    Role,
+    Session,
+    SessionState,
+    SessionEventType,
+    User,
+    UserEvent,
+    UserEventType,
+    UserState } from '@neoncity/identity-sdk-js'
 
 import { Auth0Profile } from './auth0-profile'
 
@@ -23,6 +33,8 @@ export class UserNotFoundError extends RepositoryError {
 
 
 export class Repository {
+    private static readonly _SESSION_MAX_LENGTH_IN_DAYS = 30;
+    
     private static readonly _userFields = [
 	'identity.user.id as user_id',
 	'identity.user.state as user_state',
@@ -44,6 +56,44 @@ export class Repository {
 
     constructor(conn: knex) {
 	this._conn = conn;
+    }
+
+    async createSession(requestTime: Date): Promise<Session> {
+	const sessionId = uuid();
+	const timeExpires = moment(requestTime).add(Repository._SESSION_MAX_LENGTH_IN_DAYS, 'days').toDate();
+	
+	await this._conn.transaction(async (trx) => {
+	    await trx
+		  .from('identity.session')
+		  .insert({
+		      'id': sessionId,
+		      'state': SessionState.Active,
+		      'time_expires': timeExpires,
+		      'user_id': null,
+		      'time_created': requestTime,
+		      'time_last_updated': requestTime,
+		      'time_removed': null
+		  });
+
+	    await trx
+		.from('identity.session_event')
+		.insert({
+		    'type': SessionEventType.Created,
+		    'timestamp': requestTime,
+		    'data': null,
+		    'session_id': sessionId
+		});
+	});
+
+	const session = new Session();
+	session.id = sessionId;
+	session.state = SessionState.Active;
+	session.timeExpires = timeExpires;
+	session.user = null;
+	session.timeCreated = requestTime;
+	session.timeLastUpdated = requestTime;
+
+	return session;
     }
 
     async createUser(auth0Profile: Auth0Profile, requestTime: Date): Promise<User> {
