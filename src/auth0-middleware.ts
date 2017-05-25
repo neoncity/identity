@@ -14,6 +14,7 @@ export function newAuth0Middleware(env: Env, auth0Client: auth0.AuthenticationCl
     const auth0ProfileMarshaller = new (MarshalFrom(Auth0Profile))();
     
     return wrap(async (req: IdentityRequest, res: express.Response, next: express.NextFunction) => {
+        console.log('here');
         if (req.authInfo == null) {
 	    console.log('No authInfo');
 	    res.status(HttpStatus.BAD_REQUEST);
@@ -23,7 +24,7 @@ export function newAuth0Middleware(env: Env, auth0Client: auth0.AuthenticationCl
 
         // Make a call to auth0
 	try {
-	    const auth0ProfileSerialized = await auth0Client.getProfile(req.authInfo.auth0AccessToken);
+	    const auth0ProfileSerialized = await auth0Client.getProfile(req.authInfo.auth0AccessToken as string);
 
 	    if (auth0ProfileSerialized == 'Unauthorized') {
 		console.log('Token was not accepted by Auth0');

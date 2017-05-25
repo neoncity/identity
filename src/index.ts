@@ -15,6 +15,8 @@ import { IdentityRequest } from './identity-request'
 import { newAuth0Middleware } from './auth0-middleware'
 import { Repository } from './repository'
 
+
+
 async function main() {
     startupMigration();
 
