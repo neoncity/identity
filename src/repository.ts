@@ -9,7 +9,6 @@ import {
     SessionState,
     SessionEventType,
     User,
-    UserEvent,
     UserEventType,
     UserState } from '@neoncity/identity-sdk-js'
 
@@ -62,13 +61,6 @@ export class Repository {
 	'identity.user.time_last_updated as user_time_last_updated',
 	'identity.user.time_removed as user_time_removed'
     ];
-
-    private static readonly _userEventFields = [
-        'identity.user_event.id as user_event_id',
-        'identity.user_event.type as user_event_type',
-        'identity.user_event.timestamp as user_event_timestamp',
-        'identity.user_event.data as user_event_data'
-    ];
     
     private readonly _conn: knex;
 
@@ -76,19 +68,18 @@ export class Repository {
 	this._conn = conn;
     }
 
-    async getOrCreateSession(authInfo: AuthInfo|null, requestTime: Date): Promise<Session> {
+    async getOrCreateSession(authInfo: AuthInfo|null, requestTime: Date): Promise<[AuthInfo, Session, boolean]> {
 	let dbSession: any|null = null;
+	let needToCreateSession = authInfo == null;
 
 	await this._conn.transaction(async (trx) => {
-	    // If there's no auth info, we need to create a session.
-	    let needToCreateSession = authInfo == null;
-
 	    // If there's some auth info, might as well try to retrieve it.
 	    if (authInfo != null) {
 		const dbSessions = await trx
 		      .from('identity.session')
 		      .select(Repository._sessionFields)
-		      .where({id: authInfo.sessionId, state: SessionState.Active})
+		      .whereIn('state', [SessionState.Active, SessionState.ActiveAndLinkedWithUser])
+		      .andWhere('id', authInfo.sessionId)
 		      .limit(1);
 
 		// If we can't retrieve it or if it's expired, we need to create a new session.
@@ -97,7 +88,7 @@ export class Repository {
 		} else {
 		    dbSession = dbSessions[0];
 
-		    if (dbSession['session_time_expires'] < requestTime) {
+		    if (requestTime > dbSession['session_time_expires']) {
 			needToCreateSession = true;
 		    }
 		}
@@ -134,21 +125,23 @@ export class Repository {
 	    }
 	});
 
+	const newAuthInfo = new AuthInfo(dbSession['session_id']);
+
 	const session = new Session();
-	session.id = dbSession['session_id'];
 	session.state = SessionState.Active;
 	session.timeExpires = dbSession['session_time_expires'];
 	session.user = null;
 	session.timeCreated = dbSession['session_time_created'];
 	session.timeLastUpdated = dbSession['session_time_last_updated'];
 
-	return session;
+	return [newAuthInfo, session, needToCreateSession];
     }
 
-    async getSession(id: string, requestTime: Date): Promise<Session> {
+    async getSession(authInfo: AuthInfo, requestTime: Date): Promise<Session> {
 	const dbSessions = await this._conn('identity.session')
 	      .select(Repository._sessionFields)
-	      .where({id: id, state: SessionState.Active})
+	      .whereIn('state', [SessionState.Active, SessionState.ActiveAndLinkedWithUser])
+	      .andWhere('id', authInfo.sessionId)
 	      .limit(1);
 
 	if (dbSessions.length == 0) {
@@ -157,28 +150,46 @@ export class Repository {
 
 	const dbSession = dbSessions[0];
 
+	if (requestTime > dbSession['session_time_expires']) {
+	    throw new SessionNotFoundError('Session has expired');
+	}
+
 	const session = new Session();
-	session.id = id;
 	session.state = dbSession['session_state'];
 	session.timeExpires = dbSession['session_time_expires'];
 	session.user = null;
 	session.timeCreated = dbSession['session_time_created'];
 	session.timeLastUpdated = dbSession['session_time_last_updated'];
 
-	if (requestTime > session.timeExpires) {
-	    throw new SessionNotFoundError('Session does not exist');
-	}
-
 	return session;
     }
 
-    async createUser(auth0Profile: Auth0Profile, requestTime: Date): Promise<User> {
+    async getOrCreateUserOnSession(authInfo: AuthInfo, auth0Profile: Auth0Profile, requestTime: Date): Promise<[AuthInfo, Session, boolean]> {
 	const userIdHash = auth0Profile.getUserIdHash();
-	
+
+	let dbSession: any|null = null;
 	let dbUserId: number = -1;
 	let dbUserTimeCreated: Date = new Date();
+	let userEventType: UserEventType = UserEventType.Unknown;
 	
         await this._conn.transaction(async (trx) => {
+	    const dbSessions = await trx
+		  .from('identity.session')
+		  .select(Repository._sessionFields)
+		  .whereIn('state', [SessionState.Active, SessionState.ActiveAndLinkedWithUser])
+		  .andWhere('id', authInfo.sessionId)
+		  .limit(1);
+
+	    if (dbSessions.length == 0) {
+		throw new SessionNotFoundError('Session does not exist');
+	    }
+
+	    dbSession = dbSessions[0];
+
+	    if (requestTime > dbSession['session_time_expires']) {
+		throw new SessionNotFoundError('Session has expired');
+	    }
+	    
 	    const rawResponse = await trx.raw(`
                     insert into identity.user (state, role, auth0_user_id_hash, time_created, time_last_updated)
                     values (?, ?, ?, ?, ?)
@@ -189,21 +200,47 @@ export class Repository {
 	    dbUserId = rawResponse.rows[0]['id'];
 	    dbUserTimeCreated = rawResponse.rows[0]['time_created'];
 
-            const eventType = rawResponse.rows[0]['time_created'] == rawResponse.rows[0]['time_last_updated']
+	    if (dbSession['session_user_id'] != null && dbSession['session_user_id'] != dbUserId) {
+		throw new SessionNotFoundError('Session associated with another user already');
+	    }
+
+            userEventType = rawResponse.rows[0]['time_created'] == rawResponse.rows[0]['time_last_updated']
                   ? UserEventType.Created
                   : UserEventType.Recreated;
 
             await trx
                   .from('identity.user_event')
                   .insert({
-                      'type': eventType,
+                      'type': userEventType,
                       'timestamp': requestTime,
                       'data': null,
                       'user_id': dbUserId
                   });
+
+	    if (dbSession['session_user_id'] == null) {
+		await trx
+		    .from('identity.session')
+		    .where({id: authInfo.sessionId})
+		    .update({
+			state: SessionState.ActiveAndLinkedWithUser,
+			user_id: dbUserId
+		    });
+
+		await trx
+		    .from('identity.session_event')
+		    .insert({
+			'type': SessionEventType.LinkedWithUser,
+			'timestamp': requestTime,
+			'data': null,
+			'session_id': dbSession['session_id']
+		    });
+	    }	    
 	});
 
-	return new User(
+	const session = new Session();
+	session.state = SessionState.Active;
+	session.timeExpires = dbSession['session_time_expires'];
+	session.user = new User(
 	    dbUserId,
             UserState.Active,
 	    Role.Regular,
@@ -213,9 +250,13 @@ export class Repository {
 	    auth0Profile.name,
 	    auth0Profile.picture,
 	    auth0Profile.language);
+	session.timeCreated = dbSession['session_time_created'];
+	session.timeLastUpdated = dbSession['session_time_last_updated'];
+
+	return [authInfo, session, userEventType as UserEventType == UserEventType.Created as UserEventType];
     }
-    
-    async getUser(auth0Profile: Auth0Profile): Promise<User> {
+
+    async getUserOnSession(authInfo: AuthInfo, auth0Profile: Auth0Profile, requestTime: Date): Promise<Session> {
 	const userIdHash = auth0Profile.getUserIdHash();
 	
 	// Lookup id hash in database
@@ -227,10 +268,32 @@ export class Repository {
 	if (dbUsers.length == 0) {
 	    throw new UserNotFoundError('User does not exist');
 	}
-
 	const dbUser = dbUsers[0];
 
-	return new User(
+	const dbSessions = await this._conn('identity.session')
+	      .select(Repository._sessionFields)
+	      .where('state', SessionState.ActiveAndLinkedWithUser)
+	      .andWhere('id', authInfo.sessionId)
+	      .limit(1);
+
+	if (dbSessions.length == 0) {
+	    throw new SessionNotFoundError('Session does not exist');
+	}
+
+	const dbSession = dbSessions[0];
+
+	if (requestTime > dbSession['session_time_expires']) {
+	    throw new SessionNotFoundError('Session has expired');
+	}
+
+	if (dbSession['session_user_id'] != dbUser['user_id']) {
+	    throw new SessionNotFoundError('Session and user do not match');
+	}
+
+	const session = new Session();
+	session.state = dbSession['session_state'];
+	session.timeExpires = dbSession['session_time_expires'];
+	session.user = new User(
 	    dbUser['user_id'],
             dbUser['user_state'],
 	    dbUser['user_role'],
@@ -240,38 +303,9 @@ export class Repository {
 	    auth0Profile.name,
 	    auth0Profile.picture,
 	    auth0Profile.language);
-    }
+	session.timeCreated = dbSession['session_time_created'];
+	session.timeLastUpdated = dbSession['session_time_last_updated'];
 
-    async getUserEvents(auth0Profile: Auth0Profile): Promise<UserEvent[]> {
-	const userIdHash = auth0Profile.getUserIdHash();
-
-	const dbUsers = await this._conn('identity.user')
-	      .select(['id'])
-	      .where({auth0_user_id_hash: userIdHash, state: UserState.Active})
-	      .limit(1);
-
-	if (dbUsers.length == 0) {
-	    throw new UserNotFoundError('User does not exist');
-	}
-
-	const dbUserId = dbUsers[0]['id'];
-
-        const dbUserEvents = await this._conn('identity.user_event')
-              .select(Repository._userEventFields)
-              .where({user_id: dbUserId})
-              .orderBy('timestamp', 'asc') as any[];
-
-        if (dbUserEvents.length == 0) {
-	    throw new UserNotFoundError('User does not have any events');
-        }
-
-        return dbUserEvents.map(dbUE => {
-            const userEvent = new UserEvent();
-            userEvent.id = dbUE['user_event_id'];
-            userEvent.type = dbUE['user_event_type'];
-            userEvent.timestamp = dbUE['user_event_timestamp'];
-            userEvent.data = dbUE['user_event_data'];
-            return userEvent;
-        });
+	return session;
     }
 }
