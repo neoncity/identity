@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@neoncity/common-js": "~1",
-    "@neoncity/common-server-js": "~1",
+    "@neoncity/common-server-js": "~2",
     "@neoncity/identity-sdk-js": "~2",
     "async-middleware": "=1.0.2",
     "auth0": "=2.6.0",

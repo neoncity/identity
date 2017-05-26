@@ -3,6 +3,7 @@ import * as moment from 'moment'
 import * as uuid from 'uuid'
 
 import {
+    AuthInfo,
     Role,
     Session,
     SessionState,
@@ -41,7 +42,7 @@ export class UserNotFoundError extends RepositoryError {
 
 
 export class Repository {
-    private static readonly _SESSION_MAX_LENGTH_IN_DAYS = 30;
+    private static readonly _SessionMaxLengthInDays = 30;
     
     private static readonly _sessionFields = [
 	'identity.session.id as session_id',
@@ -75,40 +76,71 @@ export class Repository {
 	this._conn = conn;
     }
 
-    async createSession(requestTime: Date): Promise<Session> {
-	const sessionId = uuid();
-	const timeExpires = moment(requestTime).add(Repository._SESSION_MAX_LENGTH_IN_DAYS, 'days').toDate();
-	
-	await this._conn.transaction(async (trx) => {
-	    await trx
-		  .from('identity.session')
-		  .insert({
-		      'id': sessionId,
-		      'state': SessionState.Active,
-		      'time_expires': timeExpires,
-		      'user_id': null,
-		      'time_created': requestTime,
-		      'time_last_updated': requestTime,
-		      'time_removed': null
-		  });
+    async getOrCreateSession(authInfo: AuthInfo|null, requestTime: Date): Promise<Session> {
+	let dbSession: any|null = null;
 
-	    await trx
-		.from('identity.session_event')
-		.insert({
-		    'type': SessionEventType.Created,
-		    'timestamp': requestTime,
-		    'data': null,
-		    'session_id': sessionId
-		});
+	await this._conn.transaction(async (trx) => {
+	    // If there's no auth info, we need to create a session.
+	    let needToCreateSession = authInfo == null;
+
+	    // If there's some auth info, might as well try to retrieve it.
+	    if (authInfo != null) {
+		const dbSessions = await trx
+		      .from('identity.session')
+		      .select(Repository._sessionFields)
+		      .where({id: authInfo.sessionId, state: SessionState.Active})
+		      .limit(1);
+
+		// If we can't retrieve it or if it's expired, we need to create a new session.
+		if (dbSessions.length == 0) {
+		    needToCreateSession = true;
+		} else {
+		    dbSession = dbSessions[0];
+
+		    if (dbSession['session_time_expires'] < requestTime) {
+			needToCreateSession = true;
+		    }
+		}
+	    }
+
+	    // If we've determined we need to create a session, we should do so.
+	    if (needToCreateSession) {
+		const sessionId = uuid();
+		const timeExpires = moment(requestTime).add(Repository._SessionMaxLengthInDays, 'days').toDate();
+		
+		const dbSessions = await trx
+		      .from('identity.session')
+		      .returning(Repository._sessionFields)
+		      .insert({
+			  'id': sessionId,
+			  'state': SessionState.Active,
+			  'time_expires': timeExpires,
+			  'user_id': null,
+			  'time_created': requestTime,
+			  'time_last_updated': requestTime,
+			  'time_removed': null
+		      });
+
+		dbSession = dbSessions[0];
+
+		await trx
+		    .from('identity.session_event')
+		    .insert({
+			'type': SessionEventType.Created,
+			'timestamp': requestTime,
+			'data': null,
+			'session_id': sessionId
+		    });
+	    }
 	});
 
 	const session = new Session();
-	session.id = sessionId;
+	session.id = dbSession['session_id'];
 	session.state = SessionState.Active;
-	session.timeExpires = timeExpires;
+	session.timeExpires = dbSession['session_time_expires'];
 	session.user = null;
-	session.timeCreated = requestTime;
-	session.timeLastUpdated = requestTime;
+	session.timeCreated = dbSession['session_time_created'];
+	session.timeLastUpdated = dbSession['session_time_last_updated'];
 
 	return session;
     }
