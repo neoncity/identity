@@ -223,7 +223,8 @@ export class Repository {
 		    .where({id: authInfo.sessionId})
 		    .update({
 			state: SessionState.ActiveAndLinkedWithUser,
-			user_id: dbUserId
+			user_id: dbUserId,
+			time_last_updated: requestTime
 		    });
 
 		await trx
