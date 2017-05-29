@@ -91,6 +91,29 @@ async function main() {
 	}
     }));
 
+    app.delete('/session', newAuthInfoMiddleware(AuthInfoLevel.SessionId), wrap(async (req: IdentityRequest, res: express.Response) => {
+	try {
+	    await repository.expireSession(req.authInfo as AuthInfo, req.requestTime);
+
+    	    res.status(HttpStatus.NO_CONTENT);
+    	    res.end();
+	} catch (e) {
+	    if (e.name == 'SessionNotFoundError') {
+		res.status(HttpStatus.NOT_FOUND);
+		res.end();
+		return;
+	    }
+	    
+	    console.log(`DB insertion error - ${e.toString()}`);
+            if (isLocal(config.ENV)) {
+                console.log(e);
+            }
+                        
+	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
+	    res.end();
+	}
+    }));
+
     app.post('/user', newAuthInfoMiddleware(AuthInfoLevel.SessionIdAndAuth0AccessToken), wrap(async (req: IdentityRequest, res: express.Response) => {
 	let auth0Profile: Auth0Profile|null = null;
 	try {

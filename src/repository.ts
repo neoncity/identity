@@ -165,6 +165,36 @@ export class Repository {
 	return session;
     }
 
+    async expireSession(authInfo: AuthInfo, requestTime: Date): Promise<void> {
+	await this._conn.transaction(async (trx) => {
+	    const dbIds = await trx
+		  .from('identity.session')
+		  .whereIn('state', [SessionState.Active, SessionState.ActiveAndLinkedWithUser])
+		  .andWhere('id', authInfo.sessionId)
+		  .returning(['id'])
+		  .update({
+		      'state': SessionState.Expired,
+		      'time_last_updated': requestTime,
+		      'time_expired': requestTime
+		  });
+
+	    if (dbIds.length == 0) {
+		throw new SessionNotFoundError('Session does not exist');
+	    }
+
+	    const dbId = dbIds[0];
+
+	    await trx
+		.from('core.cause_event')
+		.insert({
+		    'type': SessionEventType.Expired,
+		    'timestamp': requestTime,
+		    'data': null,
+		    'session_id': dbId
+		});
+	});
+    }
+
     async getOrCreateUserOnSession(authInfo: AuthInfo, auth0Profile: Auth0Profile, requestTime: Date): Promise<[AuthInfo, Session, boolean]> {
 	const userIdHash = auth0Profile.getUserIdHash();
 
