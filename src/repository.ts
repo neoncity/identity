@@ -175,22 +175,20 @@ export class Repository {
 		  .update({
 		      'state': SessionState.Expired,
 		      'time_last_updated': requestTime,
-		      'time_expired': requestTime
+		      'time_removed': requestTime
 		  });
 
 	    if (dbIds.length == 0) {
 		throw new SessionNotFoundError('Session does not exist');
 	    }
 
-	    const dbId = dbIds[0];
-
 	    await trx
-		.from('core.cause_event')
+		.from('identity.session_event')
 		.insert({
 		    'type': SessionEventType.Expired,
 		    'timestamp': requestTime,
 		    'data': null,
-		    'session_id': dbId
+		    'session_id': authInfo.sessionId
 		});
 	});
     }
