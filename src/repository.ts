@@ -47,6 +47,7 @@ export class Repository {
 	'identity.session.id as session_id',
 	'identity.session.state as session_state',
 	'identity.session.time_expires as session_time_expires',
+	'identity.session.user_id as session_user_id',
 	'identity.session.time_created as session_time_created',
 	'identity.session.time_last_updated as session_time_last_updated',
 	'identity.session.time_removed as session_time_removed'

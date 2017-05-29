@@ -179,12 +179,14 @@ async function main() {
     	    res.end();
 	} catch (e) {
 	    if (e.name == 'UserNotFoundError') {
+		console.log(`User not found - ${e.message}`);
 		res.status(HttpStatus.NOT_FOUND);
 		res.end();
 		return;
 	    }
 
 	    if (e.name == 'SessionNotFoundError') {
+		console.log(`Session not found - ${e.message}`);
 		res.status(HttpStatus.NOT_FOUND);
 		res.end();
 		return;
