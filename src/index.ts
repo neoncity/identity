@@ -40,7 +40,7 @@ async function main() {
     const sessionResponseMarshaller = new (MarshalFrom(SessionResponse))();
 
     app.use(newRequestTimeMiddleware());
-    app.use(newCorsMiddleware(config.CLIENTS));    
+    app.use(newCorsMiddleware(config.CLIENTS, ['POST', 'GET', 'DELETE'], []));    
 
     app.post('/session', newAuthInfoMiddleware(AuthInfoLevel.None), wrap(async (req: IdentityRequest, res: express.Response) => {
 	try {
