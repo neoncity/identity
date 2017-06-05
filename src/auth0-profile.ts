@@ -1,8 +1,8 @@
 import * as crypto from 'crypto'
 import * as r from 'raynor'
-import { MarshalWith } from 'raynor'
+import { MarshalWith, TryInOrder } from 'raynor'
 
-import { LanguageFromLocaleMarshaller } from '@neoncity/common-js'
+import { LanguageFromLocaleMarshaller, LanguageMarshaller } from '@neoncity/common-js'
 
 
 export class Auth0Profile {
@@ -15,7 +15,7 @@ export class Auth0Profile {
     @MarshalWith(r.StringMarshaller, 'user_id')
     userId: string;
 
-    @MarshalWith(LanguageFromLocaleMarshaller, 'locale')
+    @MarshalWith(TryInOrder(LanguageFromLocaleMarshaller, LanguageMarshaller), 'locale')
     language: string;
 
     getUserIdHash(): string {

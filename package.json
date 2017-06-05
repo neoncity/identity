@@ -1,6 +1,6 @@
 {
   "name": "@neoncity/identity",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "The identity service.",
   "author": "NeonCity team",
   "scripts": {
@@ -39,7 +39,7 @@
     "knex": "=0.12.6",
     "moment": "=2.18.1",
     "pg": "=6.1.2",
-    "raynor": "=0.8.0",
+    "raynor": "=0.9.0",
     "uuid": "=3.0.1"
   },
   "devDependencies": {
