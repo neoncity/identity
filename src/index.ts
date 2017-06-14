@@ -9,6 +9,7 @@ import { isLocal } from '@neoncity/common-js'
 import {
     AuthInfoLevel,
     newAuthInfoMiddleware,
+    newCheckOriginMiddleware,
     newCorsMiddleware,
     newJsonContentMiddleware,
     newRequestTimeMiddleware,
@@ -42,6 +43,7 @@ async function main() {
 
     app.use(newRequestTimeMiddleware());
     app.use(newCorsMiddleware(config.CLIENTS, ['POST', 'GET', 'DELETE'], []));
+    app.use(newCheckOriginMiddleware(config.CLIENTS));
     app.use(newJsonContentMiddleware());
 
     app.post('/session', newAuthInfoMiddleware(AuthInfoLevel.None), wrap(async (req: IdentityRequest, res: express.Response) => {
