@@ -10,6 +10,7 @@ import {
     AuthInfoLevel,
     newAuthInfoMiddleware,
     newCorsMiddleware,
+    newJsonContentMiddleware,
     newRequestTimeMiddleware,
     startupMigration } from '@neoncity/common-server-js'
 import { AuthInfo, AuthInfoAndSessionResponse, SessionResponse } from '@neoncity/identity-sdk-js'
@@ -40,7 +41,8 @@ async function main() {
     const sessionResponseMarshaller = new (MarshalFrom(SessionResponse))();
 
     app.use(newRequestTimeMiddleware());
-    app.use(newCorsMiddleware(config.CLIENTS, ['POST', 'GET', 'DELETE'], []));    
+    app.use(newCorsMiddleware(config.CLIENTS, ['POST', 'GET', 'DELETE'], []));
+    app.use(newJsonContentMiddleware());
 
     app.post('/session', newAuthInfoMiddleware(AuthInfoLevel.None), wrap(async (req: IdentityRequest, res: express.Response) => {
 	try {
