@@ -2,6 +2,8 @@ import * as knex from 'knex'
 import * as moment from 'moment'
 import * as uuid from 'uuid'
 
+import { randomBytes } from 'crypto'
+
 import {
     AuthInfo,
     Role,
@@ -46,6 +48,7 @@ export class Repository {
     private static readonly _sessionFields = [
 	'identity.session.id as session_id',
 	'identity.session.state as session_state',
+        'identity.session.xsrf_token as session_xsrf_token',
 	'identity.session.time_expires as session_time_expires',
 	'identity.session.user_id as session_user_id',
 	'identity.session.time_created as session_time_created',
@@ -98,6 +101,7 @@ export class Repository {
 	    // If we've determined we need to create a session, we should do so.
 	    if (needToCreateSession) {
 		const sessionId = uuid();
+                const xsrfToken = randomBytes(48).toString('base64');
 		const timeExpires = moment(requestTime).add(Repository._SessionMaxLengthInDays, 'days').toDate();
 		
 		const dbSessions = await trx
@@ -106,6 +110,7 @@ export class Repository {
 		      .insert({
 			  'id': sessionId,
 			  'state': SessionState.Active,
+                          'xsrf_token': xsrfToken,
 			  'time_expires': timeExpires,
 			  'user_id': null,
 			  'time_created': requestTime,
@@ -130,6 +135,7 @@ export class Repository {
 
 	const session = new Session();
 	session.state = SessionState.Active;
+        session.xsrfToken = dbSession['session_xsrf_token'];
 	session.timeExpires = dbSession['session_time_expires'];
 	session.user = null;
 	session.timeCreated = dbSession['session_time_created'];
@@ -157,6 +163,7 @@ export class Repository {
 
 	const session = new Session();
 	session.state = dbSession['session_state'];
+        session.xsrfToken = dbSession['session_xsrf_token'];
 	session.timeExpires = dbSession['session_time_expires'];
 	session.user = null;
 	session.timeCreated = dbSession['session_time_created'];
@@ -269,6 +276,7 @@ export class Repository {
 
 	const session = new Session();
 	session.state = SessionState.Active;
+        session.xsrfToken = dbSession['session_xsrf_token'];
 	session.timeExpires = dbSession['session_time_expires'];
 	session.user = new User(
 	    dbUserId,
@@ -323,6 +331,7 @@ export class Repository {
 
 	const session = new Session();
 	session.state = dbSession['session_state'];
+        session.xsrfToken = dbSession['session_xsrf_token'];
 	session.timeExpires = dbSession['session_time_expires'];
 	session.user = new User(
 	    dbUser['user_id'],

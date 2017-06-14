@@ -10,6 +10,7 @@ import {
     AuthInfoLevel,
     newAuthInfoMiddleware,
     newCheckOriginMiddleware,
+    newCheckXsrfTokenMiddleware,
     newCorsMiddleware,
     newJsonContentMiddleware,
     newRequestTimeMiddleware,
@@ -95,7 +96,7 @@ async function main() {
 	}
     }));
 
-    app.delete('/session', newAuthInfoMiddleware(AuthInfoLevel.SessionId), wrap(async (req: IdentityRequest, res: express.Response) => {
+    app.delete('/session', newCheckXsrfTokenMiddleware(), newAuthInfoMiddleware(AuthInfoLevel.SessionId), wrap(async (req: IdentityRequest, res: express.Response) => {
 	try {
 	    await repository.expireSession(req.authInfo as AuthInfo, req.requestTime);
 
@@ -118,7 +119,7 @@ async function main() {
 	}
     }));
 
-    app.post('/user', newAuthInfoMiddleware(AuthInfoLevel.SessionIdAndAuth0AccessToken), wrap(async (req: IdentityRequest, res: express.Response) => {
+    app.post('/user', newCheckXsrfTokenMiddleware(), newAuthInfoMiddleware(AuthInfoLevel.SessionIdAndAuth0AccessToken), wrap(async (req: IdentityRequest, res: express.Response) => {
 	let auth0Profile: Auth0Profile|null = null;
 	try {
 	    const auth0AccessToken = (req.authInfo as AuthInfo).auth0AccessToken as string;
