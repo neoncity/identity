@@ -298,6 +298,7 @@ export class Repository {
 	if (dbUsers.length == 0) {
 	    throw new UserNotFoundError('User does not exist');
 	}
+
 	const dbUser = dbUsers[0];
 
 	const dbSessions = await this._conn('identity.session')
