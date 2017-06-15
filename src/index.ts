@@ -23,7 +23,6 @@ import { IdentityRequest } from './identity-request'
 import * as config from './config'
 import { Repository } from './repository'
 
-
 async function main() {
     startupMigration();
 

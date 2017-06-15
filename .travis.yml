@@ -13,6 +13,7 @@ env:
   - DATABASE_MIGRATIONS_TABLE=null
   - PGSSLMODE=require
   - SECRET_PATH=null
+  - ORIGIN=null
   - CLIENTS=null
   - AUTH0_CLIENT_ID=null
   - AUTH0_DOMAIN=null

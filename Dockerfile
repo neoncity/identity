@@ -43,6 +43,7 @@ ENV PORT 10000
 ENV DATABASE_URL postgresql://neoncity:neoncity@neoncity-postgres:5432/neoncity
 ENV DATABASE_MIGRATIONS_DIR /neoncity/migrations
 ENV DATABASE_MIGRATIONS_TABLE migrations_identity
+ENV ORIGIN http://localhost:10001
 ENV CLIENTS http://localhost:10002,http://localhost:10003
 ENV AUTH0_CLIENT_ID null
 ENV AUTH0_DOMAIN null
