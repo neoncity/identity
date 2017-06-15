@@ -95,9 +95,12 @@ async function main() {
 	}
     }));
 
-    app.delete('/session', newCheckXsrfTokenMiddleware(), newAuthInfoMiddleware(AuthInfoLevel.SessionId), wrap(async (req: IdentityRequest, res: express.Response) => {
+    app.delete('/session', [
+        newAuthInfoMiddleware(AuthInfoLevel.SessionId),
+        newCheckXsrfTokenMiddleware(true)
+    ], wrap(async (req: IdentityRequest, res: express.Response) => {
 	try {
-	    await repository.expireSession(req.authInfo as AuthInfo, req.requestTime);
+	    await repository.expireSession(req.authInfo as AuthInfo, req.requestTime, req.xsrfToken as string);
 
     	    res.status(HttpStatus.NO_CONTENT);
     	    res.end();
@@ -107,6 +110,12 @@ async function main() {
 		res.end();
 		return;
 	    }
+
+	    if (e.name == 'XsrfTokenMismatchError') {
+		res.status(HttpStatus.BAD_REQUEST);
+		res.end();
+		return;
+	    }            
 	    
 	    console.log(`DB insertion error - ${e.toString()}`);
             if (isLocal(config.ENV)) {
@@ -118,7 +127,10 @@ async function main() {
 	}
     }));
 
-    app.post('/user', newCheckXsrfTokenMiddleware(), newAuthInfoMiddleware(AuthInfoLevel.SessionIdAndAuth0AccessToken), wrap(async (req: IdentityRequest, res: express.Response) => {
+    app.post('/user', [
+        newAuthInfoMiddleware(AuthInfoLevel.SessionIdAndAuth0AccessToken),
+        newCheckXsrfTokenMiddleware(true)
+    ], wrap(async (req: IdentityRequest, res: express.Response) => {
 	let auth0Profile: Auth0Profile|null = null;
 	try {
 	    const auth0AccessToken = (req.authInfo as AuthInfo).auth0AccessToken as string;
@@ -144,7 +156,7 @@ async function main() {
 	}
 
 	try {
-	    const [authInfo, session, created] = await repository.getOrCreateUserOnSession(req.authInfo as AuthInfo, auth0Profile, req.requestTime);
+	    const [authInfo, session, created] = await repository.getOrCreateUserOnSession(req.authInfo as AuthInfo, auth0Profile, req.requestTime, req.xsrfToken as string);
 
     	    const authInfoAndSessionResponse = new AuthInfoAndSessionResponse();
 	    authInfoAndSessionResponse.authInfo = authInfo;
@@ -159,6 +171,12 @@ async function main() {
 		res.end();
 		return;
 	    }
+
+	    if (e.name == 'XsrfTokenMismatchError') {
+		res.status(HttpStatus.BAD_REQUEST);
+		res.end();
+		return;
+	    }            
 	    
 	    console.log(`DB insertion error - ${e.toString()}`);
             if (isLocal(config.ENV)) {

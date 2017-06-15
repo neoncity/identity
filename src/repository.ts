@@ -33,6 +33,14 @@ export class SessionNotFoundError extends RepositoryError {
 }
 
 
+export class XsrfTokenMismatchError extends RepositoryError {
+    constructor(message: string) {
+	super(message);
+	this.name = 'XsrfTokenMismatchError';
+    }
+}
+
+
 export class UserNotFoundError extends RepositoryError {
     constructor(message: string) {
 	super(message);
@@ -172,13 +180,13 @@ export class Repository {
 	return session;
     }
 
-    async expireSession(authInfo: AuthInfo, requestTime: Date): Promise<void> {
+    async expireSession(authInfo: AuthInfo, requestTime: Date, xsrfToken: string): Promise<void> {
 	await this._conn.transaction(async (trx) => {
 	    const dbIds = await trx
 		  .from('identity.session')
 		  .whereIn('state', [SessionState.Active, SessionState.ActiveAndLinkedWithUser])
 		  .andWhere('id', authInfo.sessionId)
-		  .returning(['id'])
+		  .returning(['id', 'xsrf_token'])
 		  .update({
 		      'state': SessionState.Expired,
 		      'time_last_updated': requestTime,
@@ -188,6 +196,10 @@ export class Repository {
 	    if (dbIds.length == 0) {
 		throw new SessionNotFoundError('Session does not exist');
 	    }
+
+            if (dbIds['xsrf_token'] != xsrfToken) {
+                throw new XsrfTokenMismatchError('XSRF tokens do not match');
+            }
 
 	    await trx
 		.from('identity.session_event')
@@ -200,7 +212,7 @@ export class Repository {
 	});
     }
 
-    async getOrCreateUserOnSession(authInfo: AuthInfo, auth0Profile: Auth0Profile, requestTime: Date): Promise<[AuthInfo, Session, boolean]> {
+    async getOrCreateUserOnSession(authInfo: AuthInfo, auth0Profile: Auth0Profile, requestTime: Date, xsrfToken: string): Promise<[AuthInfo, Session, boolean]> {
 	const userIdHash = auth0Profile.getUserIdHash();
 
 	let dbSession: any|null = null;
@@ -221,6 +233,10 @@ export class Repository {
 	    }
 
 	    dbSession = dbSessions[0];
+
+            if (dbSession['session_xsrf_token'] != xsrfToken) {
+                throw new XsrfTokenMismatchError('XSRF tokens do not match');
+            }
 
 	    if (requestTime > dbSession['session_time_expires']) {
 		throw new SessionNotFoundError('Session has expired');
