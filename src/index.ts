@@ -1,5 +1,6 @@
 import * as auth0 from 'auth0'
 import { wrap } from 'async-middleware'
+import * as compression from 'compression'
 import * as express from 'express'
 import * as HttpStatus from 'http-status-codes'
 import * as knex from 'knex'
@@ -45,6 +46,10 @@ async function main() {
     app.use(newCorsMiddleware(config.CLIENTS, ['POST', 'GET', 'DELETE'], []));
     app.use(newCheckOriginMiddleware(config.CLIENTS));
     app.use(newJsonContentMiddleware());
+
+    if (!isLocal(config.ENV)) {
+        app.use(compression());
+    }
 
     app.post('/session', newAuthInfoMiddleware(AuthInfoLevel.None), wrap(async (req: IdentityRequest, res: express.Response) => {
 	try {
