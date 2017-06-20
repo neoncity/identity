@@ -6,6 +6,7 @@ exports.up = (knex, Promise) => knex.schema.raw(`
         -- Core properties
         state SmallInt NOT NULL,
 	role SmallInt NOT NULL,
+        agreed_to_cookie_policy Boolean NOT NULL,
         -- Foreign key to external system
 	auth0_user_id_hash Char(64) NOT NULL,
         -- Denormalized data 

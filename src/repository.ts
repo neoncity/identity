@@ -58,6 +58,7 @@ export class Repository {
 	'identity.session.state as session_state',
         'identity.session.xsrf_token as session_xsrf_token',
 	'identity.session.time_expires as session_time_expires',
+	'identity.session.agreed_to_cookie_policy as session_agreed_to_cookie_policy',
 	'identity.session.user_id as session_user_id',
 	'identity.session.time_created as session_time_created',
 	'identity.session.time_last_updated as session_time_last_updated',
@@ -68,6 +69,7 @@ export class Repository {
 	'identity.user.id as user_id',
 	'identity.user.state as user_state',
 	'identity.user.role as user_role',
+	'identity.user.agreed_to_cookie_policy as user_agreed_to_session_policy',
 	'identity.user.auth0_user_id_hash as user_auth0_user_id_hash',
 	'identity.user.time_created as user_time_created',
 	'identity.user.time_last_updated as user_time_last_updated',
@@ -120,6 +122,7 @@ export class Repository {
 			  'state': SessionState.Active,
                           'xsrf_token': xsrfToken,
 			  'time_expires': timeExpires,
+			  'agreed_to_cookie_policy': false,
 			  'user_id': null,
 			  'time_created': requestTime,
 			  'time_last_updated': requestTime,
@@ -140,16 +143,7 @@ export class Repository {
 	});
 
 	const newAuthInfo = new AuthInfo(dbSession['session_id']);
-
-	const session = new Session();
-	session.state = SessionState.Active;
-        session.xsrfToken = dbSession['session_xsrf_token'];
-	session.timeExpires = dbSession['session_time_expires'];
-	session.user = null;
-	session.timeCreated = dbSession['session_time_created'];
-	session.timeLastUpdated = dbSession['session_time_last_updated'];
-
-	return [newAuthInfo, session, needToCreateSession];
+	return [newAuthInfo, Repository._dbSessionToSession(dbSession), needToCreateSession];
     }
 
     async getSession(authInfo: AuthInfo, requestTime: Date): Promise<Session> {
@@ -169,20 +163,12 @@ export class Repository {
 	    throw new SessionNotFoundError('Session has expired');
 	}
 
-	const session = new Session();
-	session.state = dbSession['session_state'];
-        session.xsrfToken = dbSession['session_xsrf_token'];
-	session.timeExpires = dbSession['session_time_expires'];
-	session.user = null;
-	session.timeCreated = dbSession['session_time_created'];
-	session.timeLastUpdated = dbSession['session_time_last_updated'];
-
-	return session;
+	return Repository._dbSessionToSession(dbSession);
     }
 
     async expireSession(authInfo: AuthInfo, requestTime: Date, xsrfToken: string): Promise<void> {
 	await this._conn.transaction(async (trx) => {
-	    const dbIds = await trx
+	    const dbSessions = await trx
 		  .from('identity.session')
 		  .whereIn('state', [SessionState.Active, SessionState.ActiveAndLinkedWithUser])
 		  .andWhere('id', authInfo.sessionId)
@@ -193,11 +179,17 @@ export class Repository {
 		      'time_removed': requestTime
 		  });
 
-	    if (dbIds.length == 0) {
+	    if (dbSessions.length == 0) {
 		throw new SessionNotFoundError('Session does not exist');
 	    }
 
-            if (dbIds['xsrf_token'] != xsrfToken) {
+	    const dbSession = dbSessions[0];
+
+	    if (requestTime > dbSession['session_time_expires']) {
+		throw new SessionNotFoundError('Session has expired');
+	    }	    
+
+            if (dbSession['xsrf_token'] != xsrfToken) {
                 throw new XsrfTokenMismatchError('XSRF tokens do not match');
             }
 
@@ -212,12 +204,78 @@ export class Repository {
 	});
     }
 
+    async agreeToCookiePolicyForSession(authInfo: AuthInfo, requestTime: Date, xsrfToken: string): Promise<Session> {
+	let dbSession: any|null = null;
+	
+	await this._conn.transaction(async (trx) => {
+	    const dbSessions = await trx
+		  .from('identity.session')
+		  .whereIn('state', [SessionState.Active, SessionState.ActiveAndLinkedWithUser])
+		  .andWhere('id', authInfo.sessionId)
+		  .returning(Repository._sessionFields)
+		  .update({
+		      'agreed_to_cookie_policy': true,
+		      'time_last_updated': requestTime
+		  });
+
+	    if (dbSessions.length == 0) {
+		throw new SessionNotFoundError('Session does not exist');
+	    }
+
+	    const dbSession = dbSessions[0];
+
+	    if (requestTime > dbSession['session_time_expires']) {
+		throw new SessionNotFoundError('Session has expired');
+	    }
+
+	    if (dbSession['session_xsrf_token'] != xsrfToken) {
+                throw new XsrfTokenMismatchError('XSRF tokens do not match');
+            }
+
+	    await trx
+		.from('identity.session_event')
+		.insert({
+		    'type': SessionEventType.AgreedToCookiePolicy,
+		    'timestamp': requestTime,
+		    'data': null,
+		    'session_id': authInfo.sessionId
+		});
+
+	    if (dbSession['session_user_id'] != null) {
+		const dbUsers = await trx
+		      .from('identity.user')
+		      .where({user_id: dbSession['session_user_id'], state: UserState.Active})
+		      .returning(Repository._userFields)
+		      .update({
+			  'agreed_to_cookie_policy': true,
+			  'time_last_updated': requestTime
+		      });
+
+		if (dbUsers.length == 0) {
+		    throw new UserNotFoundError('User does not exist');
+		}
+
+		await trx
+		    .from('identity.user_event')
+		    .insert({
+			'type': UserEventType.AgreedToCookiePolicy,
+			'timestamp': requestTime,
+			'data': null,
+			'user_id': dbSession['session_user_id']
+		    });
+	    }
+	});
+
+	return Repository._dbSessionToSession(dbSession);
+    }
+
     async getOrCreateUserOnSession(authInfo: AuthInfo, auth0Profile: Auth0Profile, requestTime: Date, xsrfToken: string): Promise<[AuthInfo, Session, boolean]> {
 	const userIdHash = auth0Profile.getUserIdHash();
 
 	let dbSession: any|null = null;
 	let dbUserId: number = -1;
 	let dbUserTimeCreated: Date = new Date();
+	let dbUserAgreedToCookiePolicy: boolean = false;
 	let userEventType: UserEventType = UserEventType.Unknown;
 	
         await this._conn.transaction(async (trx) => {
@@ -234,23 +292,28 @@ export class Repository {
 
 	    dbSession = dbSessions[0];
 
-            if (dbSession['session_xsrf_token'] != xsrfToken) {
-                throw new XsrfTokenMismatchError('XSRF tokens do not match');
-            }
-
 	    if (requestTime > dbSession['session_time_expires']) {
 		throw new SessionNotFoundError('Session has expired');
 	    }
+
+            if (dbSession['session_xsrf_token'] != xsrfToken) {
+                throw new XsrfTokenMismatchError('XSRF tokens do not match');
+            }
 	    
 	    const rawResponse = await trx.raw(`
-                    insert into identity.user (state, role, auth0_user_id_hash, time_created, time_last_updated)
-                    values (?, ?, ?, ?, ?)
-	            on conflict (auth0_user_id_hash) do update set time_last_updated = excluded.time_last_updated, state=${UserState.Active}
-		    returning id, time_created`,
-	            [UserState.Active, Role.Regular, userIdHash, requestTime, requestTime]);
+                    insert into identity.user (state, role, agreed_to_cookie_policy, auth0_user_id_hash, time_created, time_last_updated)
+                    values (?, ?, ?, ?, ?, ?)
+	            on conflict (auth0_user_id_hash)
+                    do update
+                    set time_last_updated = excluded.time_last_updated,
+                        state=${UserState.Active},
+                        agreed_to_cookie_policy = agreed_to_cookie_policy OR excluded.agreed_to_cookie_policy
+		    returning id, time_created, agreed_to_cookie_policy`,
+                    [UserState.Active, Role.Regular, dbSession['session_agreed_to_cookie_policy'], userIdHash, requestTime, requestTime]);
 
 	    dbUserId = rawResponse.rows[0]['id'];
 	    dbUserTimeCreated = rawResponse.rows[0]['time_created'];
+	    dbUserAgreedToCookiePolicy = rawResponse.rows[0]['agreed_to_cookie_policy'];
 
 	    if (dbSession['session_user_id'] != null && dbSession['session_user_id'] != dbUserId) {
 		throw new SessionNotFoundError('Session associated with another user already');
@@ -269,12 +332,37 @@ export class Repository {
                       'user_id': dbUserId
                   });
 
+	    if (userEventType == UserEventType.Created && dbUserAgreedToCookiePolicy == true) {
+		await trx
+		    .from('identity.user_event')
+		    .insert({
+			'type': UserEventType.AgreedToCookiePolicy,
+			'timestamp': requestTime,
+                      'data': null,
+                      'user_id': dbUserId
+                    });
+	    } else if (userEventType == UserEventType.Recreated && dbUserAgreedToCookiePolicy == true) {
+		const hasEventRaw = await trx.raw(`select count(*) as has_event from identity.user_event where user_id=? and type=${UserEventType.AgreedToCookiePolicy}`, [dbUserId]);
+
+		if (hasEventRaw.rows[0]['has_event'] == 0) {
+		    await trx
+			.from('identity.user_event')
+			.insert({
+			    'type': UserEventType.AgreedToCookiePolicy,
+			    'timestamp': requestTime,
+			    'data': null,
+			    'user_id': dbUserId
+			});
+		}
+	    }
+
 	    if (dbSession['session_user_id'] == null) {
 		await trx
 		    .from('identity.session')
 		    .where({id: authInfo.sessionId})
 		    .update({
 			state: SessionState.ActiveAndLinkedWithUser,
+			agreed_to_cookie_policy: dbUserAgreedToCookiePolicy,
 			user_id: dbUserId,
 			time_last_updated: requestTime
 		    });
@@ -287,17 +375,30 @@ export class Repository {
 			'data': null,
 			'session_id': dbSession['session_id']
 		    });
-	    }	    
+
+		if (dbUserAgreedToCookiePolicy != dbSession['session_agreed_to_cookie_policy']) {
+		    await trx
+			.from('identity.session_event')
+			.insert({
+			    'type': SessionEventType.AgreedToCookiePolicy,
+			    'timestamp': requestTime,
+			    'data': null,
+			    'session_id': authInfo.sessionId
+			});		    
+		}
+	    }
 	});
 
 	const session = new Session();
 	session.state = SessionState.Active;
         session.xsrfToken = dbSession['session_xsrf_token'];
 	session.timeExpires = dbSession['session_time_expires'];
+	session.agreedToCookiePolicy = dbSession['session_agreed_to_cookie_policy'];
 	session.user = new User(
 	    dbUserId,
             UserState.Active,
 	    Role.Regular,
+	    dbUserAgreedToCookiePolicy,
 	    userIdHash,
 	    dbUserTimeCreated,
 	    requestTime,
@@ -307,7 +408,7 @@ export class Repository {
 	session.timeCreated = dbSession['session_time_created'];
 	session.timeLastUpdated = dbSession['session_time_last_updated'];
 
-	return [authInfo, session, userEventType as UserEventType == UserEventType.Created as UserEventType];
+        return [authInfo, session, userEventType as UserEventType == UserEventType.Created as UserEventType];
     }
 
     async getUserOnSession(authInfo: AuthInfo, auth0Profile: Auth0Profile, requestTime: Date): Promise<Session> {
@@ -345,20 +446,28 @@ export class Repository {
 	    throw new SessionNotFoundError('Session and user do not match');
 	}
 
+	return Repository._dbSessionToSession(dbSession, dbUser, auth0Profile);
+    }
+
+    static _dbSessionToSession(dbSession: any, dbUser: any|null = null, auth0Profile: Auth0Profile|null = null): Session {
 	const session = new Session();
 	session.state = dbSession['session_state'];
         session.xsrfToken = dbSession['session_xsrf_token'];
 	session.timeExpires = dbSession['session_time_expires'];
-	session.user = new User(
-	    dbUser['user_id'],
-            dbUser['user_state'],
-	    dbUser['user_role'],
-	    userIdHash,
-	    new Date(dbUser['user_time_created']),
-	    new Date(dbUser['user_time_last_updated']),
-	    auth0Profile.name,
-	    auth0Profile.picture,
-	    auth0Profile.language);
+	session.agreedToCookiePolicy = dbSession['session_agreed_to_cookie_policy'];
+	session.user = dbUser != null && auth0Profile != null
+	    ? new User(
+		dbUser['user_id'],
+		dbUser['user_state'],
+		dbUser['user_role'],
+		dbUser['user_agreed_to_cookie_policy'],
+		dbUser['user_auth0_user_id_hash'],
+		new Date(dbUser['user_time_created']),
+		new Date(dbUser['user_time_last_updated']),
+		auth0Profile.name,
+		auth0Profile.picture,
+		auth0Profile.language)
+	    : null;
 	session.timeCreated = dbSession['session_time_created'];
 	session.timeLastUpdated = dbSession['session_time_last_updated'];
 

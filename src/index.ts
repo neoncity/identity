@@ -133,6 +133,48 @@ async function main() {
 	}
     }));
 
+    app.post('/session/agree-to-cookie-policy', [
+        newAuthInfoMiddleware(AuthInfoLevel.SessionId),
+        newCheckXsrfTokenMiddleware(true)
+    ], wrap(async (req: IdentityRequest, res: express.Response) => {
+	try {
+	    const session = await repository.agreeToCookiePolicyForSession(req.authInfo as AuthInfo, req.requestTime, req.xsrfToken as string);
+
+	    const sessionResponse = new SessionResponse();
+    	    sessionResponse.session = session;
+
+    	    res.write(JSON.stringify(sessionResponseMarshaller.pack(sessionResponse)));
+    	    res.status(HttpStatus.OK);
+    	    res.end();
+	} catch (e) {
+	    if (e.name == 'SessionNotFoundError') {
+		res.status(HttpStatus.NOT_FOUND);
+		res.end();
+		return;
+	    }
+
+	    if (e.name == 'UserNotFoundError') {
+		res.status(HttpStatus.NOT_FOUND);
+		res.end();
+		return;
+	    }
+
+	    if (e.name == 'XsrfTokenMismatchError') {
+		res.status(HttpStatus.BAD_REQUEST);
+		res.end();
+		return;
+	    }            
+	    
+	    console.log(`DB insertion error - ${e.toString()}`);
+            if (isLocal(config.ENV)) {
+                console.log(e);
+            }
+                        
+	    res.status(HttpStatus.INTERNAL_SERVER_ERROR);
+	    res.end();
+	}
+    }));    
+
     app.post('/user', [
         newAuthInfoMiddleware(AuthInfoLevel.SessionIdAndAuth0AccessToken),
         newCheckXsrfTokenMiddleware(true)
