@@ -222,7 +222,7 @@ export class Repository {
 		throw new SessionNotFoundError('Session does not exist');
 	    }
 
-	    const dbSession = dbSessions[0];
+	    dbSession = dbSessions[0];
 
 	    if (requestTime > dbSession['session_time_expires']) {
 		throw new SessionNotFoundError('Session has expired');
