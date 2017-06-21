@@ -20,9 +20,9 @@ import { AuthInfo, AuthInfoAndSessionResponse, SessionResponse } from '@neoncity
 
 import { Auth0Profile } from './auth0-profile'
 import { IdentityRequest } from './identity-request'
-//import { newAuth0Middleware } from './auth0-middleware'
 import * as config from './config'
 import { Repository } from './repository'
+
 
 async function main() {
     startupMigration();

@@ -69,7 +69,7 @@ export class Repository {
 	'identity.user.id as user_id',
 	'identity.user.state as user_state',
 	'identity.user.role as user_role',
-	'identity.user.agreed_to_cookie_policy as user_agreed_to_session_policy',
+	'identity.user.agreed_to_cookie_policy as user_agreed_to_cookie_policy',
 	'identity.user.auth0_user_id_hash as user_auth0_user_id_hash',
 	'identity.user.time_created as user_time_created',
 	'identity.user.time_last_updated as user_time_last_updated',
@@ -244,7 +244,7 @@ export class Repository {
 	    if (dbSession['session_user_id'] != null) {
 		const dbUsers = await trx
 		      .from('identity.user')
-		      .where({user_id: dbSession['session_user_id'], state: UserState.Active})
+		      .where({id: dbSession['session_user_id'], state: UserState.Active})
 		      .returning(Repository._userFields)
 		      .update({
 			  'agreed_to_cookie_policy': true,
@@ -307,7 +307,7 @@ export class Repository {
                     do update
                     set time_last_updated = excluded.time_last_updated,
                         state=${UserState.Active},
-                        agreed_to_cookie_policy = agreed_to_cookie_policy OR excluded.agreed_to_cookie_policy
+                        agreed_to_cookie_policy = identity.user.agreed_to_cookie_policy OR excluded.agreed_to_cookie_policy
 		    returning id, time_created, agreed_to_cookie_policy`,
                     [UserState.Active, Role.Regular, dbSession['session_agreed_to_cookie_policy'], userIdHash, requestTime, requestTime]);
 
