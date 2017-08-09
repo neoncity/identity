@@ -12,7 +12,6 @@ import {
     newAuthInfoMiddleware,
     newCheckOriginMiddleware,
     newCheckXsrfTokenMiddleware,
-    newCorsMiddleware,
     newJsonContentMiddleware,
     newRequestTimeMiddleware,
     startupMigration } from '@neoncity/common-server-js'
@@ -44,7 +43,6 @@ async function main() {
 
     app.disable('x-powered-by');
     app.use(newRequestTimeMiddleware());
-    app.use(newCorsMiddleware(config.CLIENTS, ['POST', 'GET', 'DELETE'], []));
     app.use(newCheckOriginMiddleware(config.CLIENTS));
     app.use(newJsonContentMiddleware());
 
