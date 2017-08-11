@@ -19,8 +19,8 @@ export class Auth0Profile {
     language: string;
 
     getUserIdHash(): string {
-	const sha256hash = crypto.createHash('sha256');
-	sha256hash.update(this.userId);
-	return sha256hash.digest('hex');	
+        const sha256hash = crypto.createHash('sha256');
+        sha256hash.update(this.userId);
+        return sha256hash.digest('hex');
     }
 }
