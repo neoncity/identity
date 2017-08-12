@@ -7,10 +7,10 @@ import { randomBytes } from 'crypto'
 import {
     AuthInfo,
     Role,
+    PrivateUser,
     Session,
     SessionState,
     SessionEventType,
-    User,
     UserEventType,
     UserState
 } from '@neoncity/identity-sdk-js'
@@ -395,17 +395,17 @@ export class Repository {
         session.xsrfToken = dbSession['session_xsrf_token'];
         session.timeExpires = dbSession['session_time_expires'];
         session.agreedToCookiePolicy = dbSession['session_agreed_to_cookie_policy'];
-        session.user = new User(
-            dbUserId,
-            UserState.Active,
-            Role.Regular,
-            dbUserAgreedToCookiePolicy,
-            userIdHash,
-            dbUserTimeCreated,
-            requestTime,
-            auth0Profile.name,
-            auth0Profile.picture,
-            auth0Profile.language);
+        session.user = new PrivateUser();
+        session.user.id = dbUserId;
+        session.user.state = UserState.Active;
+        session.user.role = Role.Regular;
+        session.user.name = auth0Profile.name;
+        session.user.pictureUri = auth0Profile.picture;
+        session.user.language = auth0Profile.language;
+        session.user.timeCreated = dbUserTimeCreated;
+        session.user.timeLastUpdated = requestTime;
+        session.user.agreedToCookiePolicy = dbUserAgreedToCookiePolicy;
+        session.user.auth0UserIdHash = userIdHash;
         session.timeCreated = dbSession['session_time_created'];
         session.timeLastUpdated = dbSession['session_time_last_updated'];
 
@@ -457,17 +457,20 @@ export class Repository {
         session.timeExpires = dbSession['session_time_expires'];
         session.agreedToCookiePolicy = dbSession['session_agreed_to_cookie_policy'];
         session.user = dbUser != null && auth0Profile != null
-            ? new User(
-                dbUser['user_id'],
-                dbUser['user_state'],
-                dbUser['user_role'],
-                dbUser['user_agreed_to_cookie_policy'],
-                dbUser['user_auth0_user_id_hash'],
-                new Date(dbUser['user_time_created']),
-                new Date(dbUser['user_time_last_updated']),
-                auth0Profile.name,
-                auth0Profile.picture,
-                auth0Profile.language)
+            ? (() => {
+                const user = new PrivateUser();
+                user.id = dbUser['user_id'];
+                user.state = dbUser['user_state'];
+                user.role = dbUser['user_role'];
+                user.name = auth0Profile.name;
+                user.pictureUri = auth0Profile.picture;
+                user.language = auth0Profile.language;
+                user.timeCreated = new Date(dbUser['user_time_created']);
+                user.timeLastUpdated = new Date(dbUser['user_time_last_updated']);
+                user.agreedToCookiePolicy = dbUser['user_agreed_to_cookie_policy'];
+                user.auth0UserIdHash = dbUser['user_auth0_user_id_hash'];
+                return user;
+            })()
             : null;
         session.timeCreated = dbSession['session_time_created'];
         session.timeLastUpdated = dbSession['session_time_last_updated'];
