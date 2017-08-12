@@ -64,9 +64,7 @@ async function main() {
             res.end();
         } catch (e) {
             console.log(`DB insertion error - ${e.toString()}`);
-            if (isLocal(config.ENV)) {
-                console.log(e);
-            }
+            console.log(e);
 
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
@@ -91,9 +89,7 @@ async function main() {
             }
 
             console.log(`DB insertion error - ${e.toString()}`);
-            if (isLocal(config.ENV)) {
-                console.log(e);
-            }
+            console.log(e);
 
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
@@ -123,9 +119,7 @@ async function main() {
             }
 
             console.log(`DB insertion error - ${e.toString()}`);
-            if (isLocal(config.ENV)) {
-                console.log(e);
-            }
+            console.log(e);
 
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
@@ -165,9 +159,7 @@ async function main() {
             }
 
             console.log(`DB insertion error - ${e.toString()}`);
-            if (isLocal(config.ENV)) {
-                console.log(e);
-            }
+            console.log(e);
 
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
@@ -193,9 +185,7 @@ async function main() {
             auth0Profile = auth0ProfileMarshaller.extract(JSON.parse(auth0ProfileSerialized));
         } catch (e) {
             console.log(`Auth0 error - ${e.toString()}`);
-            if (isLocal(config.ENV)) {
-                console.log(e);
-            }
+            console.log(e);
 
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
@@ -226,9 +216,7 @@ async function main() {
             }
 
             console.log(`DB insertion error - ${e.toString()}`);
-            if (isLocal(config.ENV)) {
-                console.log(e);
-            }
+            console.log(e);
 
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
@@ -251,9 +239,7 @@ async function main() {
             auth0Profile = auth0ProfileMarshaller.extract(JSON.parse(auth0ProfileSerialized));
         } catch (e) {
             console.log(`Auth0 error - ${e.toString()}`);
-            if (isLocal(config.ENV)) {
-                console.log(e);
-            }
+            console.log(e);
 
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
@@ -285,9 +271,7 @@ async function main() {
             }
 
             console.log(`DB insertion error - ${e.toString()}`);
-            if (isLocal(config.ENV)) {
-                console.log(e);
-            }
+            console.log(e);
 
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
