@@ -312,13 +312,13 @@ export class Repository {
             const rawResponse = await trx.raw(`
                     insert into identity.user (state, role, agreed_to_cookie_policy, auth0_user_id, auth0_user_id_hash, auth0_profile, time_created, time_last_updated)
                     values (?, ?, ?, ?, ?, ?, ?, ?)
-	                  on conflict (auth0_user_id_hash)
+                    on conflict (auth0_user_id_hash)
                     do update
                     set time_last_updated = excluded.time_last_updated,
                         state=${UserState.Active},
                         agreed_to_cookie_policy = identity.user.agreed_to_cookie_policy OR excluded.agreed_to_cookie_policy,
                         auth0_profile = excluded.auth0_profile
-		                returning id, time_created, agreed_to_cookie_policy`,
+                    returning id, time_created, agreed_to_cookie_policy`,
                 [UserState.Active, Role.Regular, dbSession['session_agreed_to_cookie_policy'], userId, userIdHash, this._auth0ProfileMarshaller.pack(auth0Profile), requestTime, requestTime]);
 
             dbUserId = rawResponse.rows[0]['id'];
@@ -466,8 +466,8 @@ export class Repository {
 
         const dbUsers = await this._conn('identity.user')
             .select(Repository._userFields)
-            .whereIn('user_id', ids)
-            .andWhere({state: UserState.Active})
+            .whereIn('id', ids)
+            .andWhere({ state: UserState.Active })
             .limit(Repository.MAX_NUMBER_OF_USERS);
 
         if (dbUsers.length != ids.length) {
