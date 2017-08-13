@@ -8,8 +8,10 @@ exports.up = (knex, Promise) => knex.schema.raw(`
         role SmallInt NOT NULL,
         agreed_to_cookie_policy Boolean NOT NULL,
         -- Foreign key to external system
+        auth0_user_id Varchar(128) NOT NULL,
         auth0_user_id_hash Char(64) NOT NULL,
         -- Denormalized data
+        auth0_profile Jsonb NOT NULL,
         time_created Timestamp NOT NULL,
         time_last_updated Timestamp NOT NULL,
         time_removed Timestamp NULL

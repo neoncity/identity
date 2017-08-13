@@ -1,5 +1,6 @@
 import * as knex from 'knex'
 import * as moment from 'moment'
+import { Marshaller, MarshalFrom } from 'raynor'
 import * as uuid from 'uuid'
 
 import { randomBytes } from 'crypto'
@@ -71,16 +72,20 @@ export class Repository {
         'identity.user.state as user_state',
         'identity.user.role as user_role',
         'identity.user.agreed_to_cookie_policy as user_agreed_to_cookie_policy',
+        'identity.user.auth0_user_id as user_auth0_user_id',
         'identity.user.auth0_user_id_hash as user_auth0_user_id_hash',
+        'identity.user.auth0_profile as user_auth0_profile',
         'identity.user.time_created as user_time_created',
         'identity.user.time_last_updated as user_time_last_updated',
         'identity.user.time_removed as user_time_removed'
     ];
 
     private readonly _conn: knex;
+    private readonly _auth0ProfileMarshaller: Marshaller<Auth0Profile>;
 
     constructor(conn: knex) {
         this._conn = conn;
+        this._auth0ProfileMarshaller = new (MarshalFrom(Auth0Profile))();
     }
 
     async getOrCreateSession(authInfo: AuthInfo | null, requestTime: Date): Promise<[AuthInfo, Session, boolean]> {
@@ -271,6 +276,7 @@ export class Repository {
     }
 
     async getOrCreateUserOnSession(authInfo: AuthInfo, auth0Profile: Auth0Profile, requestTime: Date, xsrfToken: string): Promise<[AuthInfo, Session, boolean]> {
+        const userId = auth0Profile.userId;
         const userIdHash = auth0Profile.getUserIdHash();
 
         let dbSession: any | null = null;
@@ -302,15 +308,16 @@ export class Repository {
             }
 
             const rawResponse = await trx.raw(`
-                    insert into identity.user (state, role, agreed_to_cookie_policy, auth0_user_id_hash, time_created, time_last_updated)
-                    values (?, ?, ?, ?, ?, ?)
-	            on conflict (auth0_user_id_hash)
+                    insert into identity.user (state, role, agreed_to_cookie_policy, auth0_user_id, auth0_user_id_hash, auth0_profile, time_created, time_last_updated)
+                    values (?, ?, ?, ?, ?, ?, ?, ?)
+	                  on conflict (auth0_user_id_hash)
                     do update
                     set time_last_updated = excluded.time_last_updated,
                         state=${UserState.Active},
-                        agreed_to_cookie_policy = identity.user.agreed_to_cookie_policy OR excluded.agreed_to_cookie_policy
-		    returning id, time_created, agreed_to_cookie_policy`,
-                [UserState.Active, Role.Regular, dbSession['session_agreed_to_cookie_policy'], userIdHash, requestTime, requestTime]);
+                        agreed_to_cookie_policy = identity.user.agreed_to_cookie_policy OR excluded.agreed_to_cookie_policy,
+                        auth0_profile = excluded.auth0_profile
+		                returning id, time_created, agreed_to_cookie_policy`,
+                [UserState.Active, Role.Regular, dbSession['session_agreed_to_cookie_policy'], userId, userIdHash, this._auth0ProfileMarshaller.pack(auth0Profile), requestTime, requestTime]);
 
             dbUserId = rawResponse.rows[0]['id'];
             dbUserTimeCreated = rawResponse.rows[0]['time_created'];
