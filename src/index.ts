@@ -4,7 +4,8 @@ import * as compression from 'compression'
 import * as express from 'express'
 import * as HttpStatus from 'http-status-codes'
 import * as knex from 'knex'
-import { MarshalFrom } from 'raynor'
+import { ArrayOf, MarshalFrom } from 'raynor'
+import * as r from 'raynor'
 
 import { isLocal } from '@neoncity/common-js'
 import {
@@ -16,7 +17,12 @@ import {
     newRequestTimeMiddleware,
     startupMigration
 } from '@neoncity/common-server-js'
-import { AuthInfo, AuthInfoAndSessionResponse, SessionResponse } from '@neoncity/identity-sdk-js'
+import {
+    AuthInfo,
+    AuthInfoAndSessionResponse,
+    SessionResponse,
+    UsersInfoResponse
+} from '@neoncity/identity-sdk-js'
 
 import { Auth0Profile } from './auth0-profile'
 import { IdentityRequest } from './identity-request'
@@ -41,6 +47,8 @@ async function main() {
     const auth0ProfileMarshaller = new (MarshalFrom(Auth0Profile))();
     const authInfoAndSessionResponseMarshaller = new (MarshalFrom(AuthInfoAndSessionResponse))();
     const sessionResponseMarshaller = new (MarshalFrom(SessionResponse))();
+    const usersInfoResponseMarshaller = new (MarshalFrom(UsersInfoResponse))();
+    const idsMarshaller = new (ArrayOf(r.IdMarshaller))();
 
     app.disable('x-powered-by');
     app.use(newRequestTimeMiddleware());
@@ -273,6 +281,55 @@ async function main() {
             console.log(`DB insertion error - ${e.toString()}`);
             console.log(e);
 
+            res.status(HttpStatus.INTERNAL_SERVER_ERROR);
+            res.end();
+        }
+    }));
+
+    app.get('/users-info', newAuthInfoMiddleware(AuthInfoLevel.SessionId), wrap(async (req: IdentityRequest, res: express.Response) => {
+        if (req.query.ids === undefined) {
+            console.log('Missing required "ids" parameter');
+            res.status(HttpStatus.BAD_REQUEST);
+            res.end();
+            return;
+        }
+
+        let ids: number[] | null = null;
+        try {
+            ids = idsMarshaller.extract(JSON.parse(decodeURIComponent(req.query.ids)));
+        } catch (e) {
+            console.log(`Invalid ids - ${e.toString()}`);
+            console.log(e);
+            res.status(HttpStatus.BAD_REQUEST);
+            res.end();
+            return;
+        }
+
+        if (ids.length > Repository.MAX_NUMBER_OF_USERS) {
+            console.log(`Can't retrieve ${ids.length} users`);
+            res.status(HttpStatus.BAD_REQUEST);
+            res.end();
+            return;
+        }
+
+        try {
+            const usersInfo = await repository.getUsersInfo(req.authInfo as AuthInfo, ids);
+            const usersInfoResponse = new UsersInfoResponse();
+            usersInfoResponse.usersInfo = usersInfo;
+
+            res.write(JSON.stringify(usersInfoResponseMarshaller.pack(usersInfoResponse)));
+            res.status(HttpStatus.OK);
+            res.end();
+        } catch (e) {
+            if (e.name == 'UserNotFoundError') {
+                console.log(e.message);
+                res.status(HttpStatus.NOT_FOUND);
+                res.end();
+                return;
+            }
+
+            console.log(`DB retrieval error - ${e.toString()}`);
+            console.log(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }

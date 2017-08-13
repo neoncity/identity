@@ -9,6 +9,7 @@ import {
     AuthInfo,
     Role,
     PrivateUser,
+    PublicUser,
     Session,
     SessionState,
     SessionEventType,
@@ -53,7 +54,8 @@ export class UserNotFoundError extends RepositoryError {
 
 
 export class Repository {
-    private static readonly _SessionMaxLengthInDays = 30;
+    public static readonly MAX_NUMBER_OF_USERS: number = 20;
+    private static readonly SESSION_MAX_LENGTH_IN_DAYS: number = 30;
 
     private static readonly _sessionFields = [
         'identity.session.id as session_id',
@@ -118,7 +120,7 @@ export class Repository {
             if (needToCreateSession) {
                 const sessionId = uuid();
                 const xsrfToken = randomBytes(48).toString('base64');
-                const timeExpires = moment(requestTime).add(Repository._SessionMaxLengthInDays, 'days').toDate();
+                const timeExpires = moment(requestTime).add(Repository.SESSION_MAX_LENGTH_IN_DAYS, 'days').toDate();
 
                 const dbSessions = await trx
                     .from('identity.session')
@@ -457,6 +459,25 @@ export class Repository {
         return Repository._dbSessionToSession(dbSession, dbUser, auth0Profile);
     }
 
+    async getUsersInfo(_authInfo: AuthInfo, ids: number[]): Promise<PublicUser[]> {
+        if (ids.length > Repository.MAX_NUMBER_OF_USERS) {
+            throw new RepositoryError(`Can't retrieve ${ids.length} users`);
+        }
+
+        const dbUsers = await this._conn('identity.user')
+            .select(Repository._userFields)
+            .whereIn('user_id', ids)
+            .andWhere({state: UserState.Active})
+            .limit(Repository.MAX_NUMBER_OF_USERS);
+
+        if (dbUsers.length != ids.length) {
+            throw new UserNotFoundError(`Looking for ids ${JSON.stringify(ids)} but got ${JSON.stringify(dbUsers.map((u: any) => u['user_id']))}`);
+        }
+
+
+        return dbUsers.map((dbU: any) => this._dbUserToPublicUser(dbU));
+    }
+
     static _dbSessionToSession(dbSession: any, dbUser: any | null = null, auth0Profile: Auth0Profile | null = null): Session {
         const session = new Session();
         session.state = dbSession['session_state'];
@@ -483,5 +504,20 @@ export class Repository {
         session.timeLastUpdated = dbSession['session_time_last_updated'];
 
         return session;
+    }
+
+    _dbUserToPublicUser(dbUser: any): PublicUser {
+        const auth0Profile = this._auth0ProfileMarshaller.extract(dbUser['user_auth0_profile']);
+
+        const user = new PublicUser();
+        user.id = dbUser['user_id'];
+        user.state = dbUser['user_state'];
+        user.role = dbUser['user_role'];
+        user.name = auth0Profile.name;
+        user.pictureUri = auth0Profile.picture;
+        user.language = auth0Profile.language;
+        user.timeCreated = new Date(dbUser['user_time_created']);
+        user.timeLastUpdated = new Date(dbUser['user_time_last_updated']);
+        return user;
     }
 }
