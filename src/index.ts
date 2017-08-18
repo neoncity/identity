@@ -14,6 +14,7 @@ import {
     newCheckOriginMiddleware,
     newCheckXsrfTokenMiddleware,
     newJsonContentMiddleware,
+    newLogginMiddleware,
     newRequestTimeMiddleware,
     startupMigration
 } from '@neoncity/common-server-js'
@@ -28,8 +29,6 @@ import { Auth0Profile } from './auth0-profile'
 import { IdentityRequest } from './identity-request'
 import * as config from './config'
 import { Repository } from './repository'
-
-const newBunyanLoggerMiddleware = require('express-bunyan-logger');
 
 
 async function main() {
@@ -56,13 +55,7 @@ async function main() {
     app.use(newRequestTimeMiddleware());
     app.use(newCheckOriginMiddleware(config.CLIENTS));
     app.use(newJsonContentMiddleware());
-    app.use(newBunyanLoggerMiddleware({
-        name: 'identity',
-        streams: [{
-            level: 'info',
-            stream: process.stdout
-        }]
-    }))
+    app.use(newLogginMiddleware(config.NAME));
 
     if (!isLocal(config.ENV)) {
         app.use(compression());
