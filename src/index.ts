@@ -14,7 +14,7 @@ import {
     newCheckOriginMiddleware,
     newCheckXsrfTokenMiddleware,
     newJsonContentMiddleware,
-    newLogginMiddleware,
+    newLoggingMiddleware,
     newRequestTimeMiddleware,
     startupMigration
 } from '@neoncity/common-server-js'
@@ -55,7 +55,7 @@ async function main() {
     app.use(newRequestTimeMiddleware());
     app.use(newCheckOriginMiddleware(config.CLIENTS));
     app.use(newJsonContentMiddleware());
-    app.use(newLogginMiddleware(config.NAME));
+    app.use(newLoggingMiddleware(config.NAME));
 
     if (!isLocal(config.ENV)) {
         app.use(compression());
