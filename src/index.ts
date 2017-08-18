@@ -29,6 +29,8 @@ import { IdentityRequest } from './identity-request'
 import * as config from './config'
 import { Repository } from './repository'
 
+const newBunyanLoggerMiddleware = require('express-bunyan-logger');
+
 
 async function main() {
     startupMigration();
@@ -54,6 +56,13 @@ async function main() {
     app.use(newRequestTimeMiddleware());
     app.use(newCheckOriginMiddleware(config.CLIENTS));
     app.use(newJsonContentMiddleware());
+    app.use(newBunyanLoggerMiddleware({
+        name: 'identity',
+        streams: [{
+            level: 'info',
+            stream: process.stdout
+        }]
+    }))
 
     if (!isLocal(config.ENV)) {
         app.use(compression());
@@ -71,9 +80,7 @@ async function main() {
             res.status(created ? HttpStatus.CREATED : HttpStatus.OK);
             res.end();
         } catch (e) {
-            console.log(`DB insertion error - ${e.toString()}`);
-            console.log(e);
-
+            req.log.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
@@ -96,9 +103,7 @@ async function main() {
                 return;
             }
 
-            console.log(`DB insertion error - ${e.toString()}`);
-            console.log(e);
-
+            req.log.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
@@ -126,9 +131,7 @@ async function main() {
                 return;
             }
 
-            console.log(`DB insertion error - ${e.toString()}`);
-            console.log(e);
-
+            req.log.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
@@ -166,9 +169,7 @@ async function main() {
                 return;
             }
 
-            console.log(`DB insertion error - ${e.toString()}`);
-            console.log(e);
-
+            req.log.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
@@ -184,7 +185,7 @@ async function main() {
             const auth0ProfileSerialized = await auth0Client.getProfile(auth0AccessToken);
 
             if (auth0ProfileSerialized == 'Unauthorized') {
-                console.log('Token was not accepted by Auth0');
+                req.log.warn('Token was not accepted by Auth0');
                 res.status(HttpStatus.UNAUTHORIZED);
                 res.end();
                 return;
@@ -192,9 +193,7 @@ async function main() {
 
             auth0Profile = auth0ProfileMarshaller.extract(JSON.parse(auth0ProfileSerialized));
         } catch (e) {
-            console.log(`Auth0 error - ${e.toString()}`);
-            console.log(e);
-
+            req.log.error(e, 'Auth0 Error');
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
             return;
@@ -223,9 +222,7 @@ async function main() {
                 return;
             }
 
-            console.log(`DB insertion error - ${e.toString()}`);
-            console.log(e);
-
+            req.log.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
@@ -238,7 +235,7 @@ async function main() {
             const auth0ProfileSerialized = await auth0Client.getProfile(auth0AccessToken);
 
             if (auth0ProfileSerialized == 'Unauthorized') {
-                console.log('Token was not accepted by Auth0');
+                req.log.warn('Token was not accepted by Auth0');
                 res.status(HttpStatus.UNAUTHORIZED);
                 res.end();
                 return;
@@ -246,9 +243,7 @@ async function main() {
 
             auth0Profile = auth0ProfileMarshaller.extract(JSON.parse(auth0ProfileSerialized));
         } catch (e) {
-            console.log(`Auth0 error - ${e.toString()}`);
-            console.log(e);
-
+            req.log.error(e, 'Auth0 Error');
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
             return;
@@ -265,22 +260,18 @@ async function main() {
             res.end();
         } catch (e) {
             if (e.name == 'UserNotFoundError') {
-                console.log(`User not found - ${e.message}`);
                 res.status(HttpStatus.NOT_FOUND);
                 res.end();
                 return;
             }
 
             if (e.name == 'SessionNotFoundError') {
-                console.log(`Session not found - ${e.message}`);
                 res.status(HttpStatus.NOT_FOUND);
                 res.end();
                 return;
             }
 
-            console.log(`DB insertion error - ${e.toString()}`);
-            console.log(e);
-
+            req.log.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
@@ -288,7 +279,7 @@ async function main() {
 
     app.get('/users-info', newAuthInfoMiddleware(AuthInfoLevel.SessionId), wrap(async (req: IdentityRequest, res: express.Response) => {
         if (req.query.ids === undefined) {
-            console.log('Missing required "ids" parameter');
+            req.log.warn('Missing required "ids" parameter');
             res.status(HttpStatus.BAD_REQUEST);
             res.end();
             return;
@@ -298,15 +289,14 @@ async function main() {
         try {
             ids = idsMarshaller.extract(JSON.parse(decodeURIComponent(req.query.ids)));
         } catch (e) {
-            console.log(`Invalid ids - ${e.toString()}`);
-            console.log(e);
+            req.log.warn('Could not decode "ids" parameter');
             res.status(HttpStatus.BAD_REQUEST);
             res.end();
             return;
         }
 
         if (ids.length > Repository.MAX_NUMBER_OF_USERS) {
-            console.log(`Can't retrieve ${ids.length} users`);
+            req.log.warn(`Can't retrieve ${ids.length} users`);
             res.status(HttpStatus.BAD_REQUEST);
             res.end();
             return;
@@ -322,14 +312,12 @@ async function main() {
             res.end();
         } catch (e) {
             if (e.name == 'UserNotFoundError') {
-                console.log(e.message);
                 res.status(HttpStatus.NOT_FOUND);
                 res.end();
                 return;
             }
 
-            console.log(`DB retrieval error - ${e.toString()}`);
-            console.log(e);
+            req.log.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
