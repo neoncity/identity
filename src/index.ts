@@ -55,7 +55,7 @@ async function main() {
     app.use(newRequestTimeMiddleware());
     app.use(newCheckOriginMiddleware(config.CLIENTS));
     app.use(newJsonContentMiddleware());
-    app.use(newLoggingMiddleware(config.NAME));
+    app.use(newLoggingMiddleware(config.NAME, config.ENV, config.BUNYAN_TOKEN, config.BUNYAN_DOMAIN));
 
     if (!isLocal(config.ENV)) {
         app.use(compression());
