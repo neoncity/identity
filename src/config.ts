@@ -14,8 +14,8 @@ export const CLIENTS: string[] = process.env.CLIENTS.split(',');
 
 export let AUTH0_CLIENT_ID: string;
 export let AUTH0_DOMAIN: string;
-export let BUNYAN_TOKEN: string|null;
-export let BUNYAN_DOMAIN: string|null;
+export let LOGGLY_TOKEN: string|null;
+export let LOGGLY_SUBDOMAIN: string|null;
 
 if (isLocal(ENV)) {
     const secrets = JSON.parse(readFileSync(process.env.SECRETS_PATH, 'utf-8'));
@@ -28,9 +28,9 @@ if (isLocal(ENV)) {
 }
 
 if (ENV == Env.Local || ENV == Env.Test) {
-    BUNYAN_TOKEN = null;
-    BUNYAN_DOMAIN = null;
+    LOGGLY_TOKEN = null;
+    LOGGLY_SUBDOMAIN = null;
 } else {
-    BUNYAN_TOKEN = process.env.BUNYAN_TOKEN;
-    BUNYAN_DOMAIN = process.env.BUNYAN_DOMAIN;
+    LOGGLY_TOKEN = process.env.LOGGLY_TOKEN;
+    LOGGLY_SUBDOMAIN = process.env.LOGGLY_SUBDOMAIN;
 }
