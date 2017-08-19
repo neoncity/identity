@@ -81,7 +81,7 @@ async function main() {
 
     app.get('/session', newAuthInfoMiddleware(AuthInfoLevel.SessionId), wrap(async (req: IdentityRequest, res: express.Response) => {
         try {
-            const session = await repository.getSession(req.authInfo as AuthInfo, req.requestTime);
+            const session = await repository.getSession(req.authInfo as AuthInfo);
 
             const sessionResponse = new SessionResponse();
             sessionResponse.session = session;
@@ -243,7 +243,7 @@ async function main() {
         }
 
         try {
-            const session = await repository.getUserOnSession(req.authInfo as AuthInfo, auth0Profile, req.requestTime);
+            const session = await repository.getUserOnSession(req.authInfo as AuthInfo, auth0Profile);
 
             const sessionResponse = new SessionResponse();
             sessionResponse.session = session;

@@ -1,5 +1,4 @@
 import * as knex from 'knex'
-import * as moment from 'moment'
 import { Marshaller, MarshalFrom } from 'raynor'
 import * as uuid from 'uuid'
 
@@ -55,13 +54,11 @@ export class UserNotFoundError extends RepositoryError {
 
 export class Repository {
     public static readonly MAX_NUMBER_OF_USERS: number = 20;
-    private static readonly SESSION_MAX_LENGTH_IN_DAYS: number = 30;
 
     private static readonly _sessionFields = [
         'identity.session.id as session_id',
         'identity.session.state as session_state',
         'identity.session.xsrf_token as session_xsrf_token',
-        'identity.session.time_expires as session_time_expires',
         'identity.session.agreed_to_cookie_policy as session_agreed_to_cookie_policy',
         'identity.session.user_id as session_user_id',
         'identity.session.time_created as session_time_created',
@@ -104,15 +101,9 @@ export class Repository {
                     .andWhere('id', authInfo.sessionId)
                     .limit(1);
 
-                // If we can't retrieve it or if it's expired, we need to create a new session.
+                // If we can't retrieve it we need to create a new session.
                 if (dbSessions.length == 0) {
                     needToCreateSession = true;
-                } else {
-                    dbSession = dbSessions[0];
-
-                    if (requestTime > dbSession['session_time_expires']) {
-                        needToCreateSession = true;
-                    }
                 }
             }
 
@@ -120,7 +111,6 @@ export class Repository {
             if (needToCreateSession) {
                 const sessionId = uuid();
                 const xsrfToken = randomBytes(48).toString('base64');
-                const timeExpires = moment(requestTime).add(Repository.SESSION_MAX_LENGTH_IN_DAYS, 'days').toDate();
 
                 const dbSessions = await trx
                     .from('identity.session')
@@ -129,7 +119,6 @@ export class Repository {
                         'id': sessionId,
                         'state': SessionState.Active,
                         'xsrf_token': xsrfToken,
-                        'time_expires': timeExpires,
                         'agreed_to_cookie_policy': false,
                         'user_id': null,
                         'time_created': requestTime,
@@ -154,7 +143,7 @@ export class Repository {
         return [newAuthInfo, Repository._dbSessionToSession(dbSession), needToCreateSession];
     }
 
-    async getSession(authInfo: AuthInfo, requestTime: Date): Promise<Session> {
+    async getSession(authInfo: AuthInfo): Promise<Session> {
         const dbSessions = await this._conn('identity.session')
             .select(Repository._sessionFields)
             .whereIn('state', [SessionState.Active, SessionState.ActiveAndLinkedWithUser])
@@ -166,10 +155,6 @@ export class Repository {
         }
 
         const dbSession = dbSessions[0];
-
-        if (requestTime > dbSession['session_time_expires']) {
-            throw new SessionNotFoundError('Session has expired');
-        }
 
         return Repository._dbSessionToSession(dbSession);
     }
@@ -192,10 +177,6 @@ export class Repository {
             }
 
             const dbSession = dbSessions[0];
-
-            if (requestTime > dbSession['session_time_expires']) {
-                throw new SessionNotFoundError('Session has expired');
-            }
 
             if (dbSession['xsrf_token'] != xsrfToken) {
                 throw new XsrfTokenMismatchError('XSRF tokens do not match');
@@ -231,10 +212,6 @@ export class Repository {
             }
 
             dbSession = dbSessions[0];
-
-            if (requestTime > dbSession['session_time_expires']) {
-                throw new SessionNotFoundError('Session has expired');
-            }
 
             if (dbSession['session_xsrf_token'] != xsrfToken) {
                 throw new XsrfTokenMismatchError('XSRF tokens do not match');
@@ -300,10 +277,6 @@ export class Repository {
             }
 
             dbSession = dbSessions[0];
-
-            if (requestTime > dbSession['session_time_expires']) {
-                throw new SessionNotFoundError('Session has expired');
-            }
 
             if (dbSession['session_xsrf_token'] != xsrfToken) {
                 throw new XsrfTokenMismatchError('XSRF tokens do not match');
@@ -402,7 +375,6 @@ export class Repository {
         const session = new Session();
         session.state = SessionState.Active;
         session.xsrfToken = dbSession['session_xsrf_token'];
-        session.timeExpires = dbSession['session_time_expires'];
         session.agreedToCookiePolicy = dbSession['session_agreed_to_cookie_policy'];
         session.user = new PrivateUser();
         session.user.id = dbUserId;
@@ -421,7 +393,7 @@ export class Repository {
         return [authInfo, session, userEventType as UserEventType == UserEventType.Created as UserEventType];
     }
 
-    async getUserOnSession(authInfo: AuthInfo, auth0Profile: Auth0Profile, requestTime: Date): Promise<Session> {
+    async getUserOnSession(authInfo: AuthInfo, auth0Profile: Auth0Profile): Promise<Session> {
         const userIdHash = auth0Profile.getUserIdHash();
 
         // Lookup id hash in database
@@ -447,10 +419,6 @@ export class Repository {
         }
 
         const dbSession = dbSessions[0];
-
-        if (requestTime > dbSession['session_time_expires']) {
-            throw new SessionNotFoundError('Session has expired');
-        }
 
         if (dbSession['session_user_id'] != dbUser['user_id']) {
             throw new SessionNotFoundError('Session and user do not match');
@@ -482,7 +450,6 @@ export class Repository {
         const session = new Session();
         session.state = dbSession['session_state'];
         session.xsrfToken = dbSession['session_xsrf_token'];
-        session.timeExpires = dbSession['session_time_expires'];
         session.agreedToCookiePolicy = dbSession['session_agreed_to_cookie_policy'];
         session.user = dbUser != null && auth0Profile != null
             ? (() => {

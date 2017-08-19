@@ -6,7 +6,6 @@ exports.up = (knex, Promise) => knex.schema.raw(`
         -- Core properties
         state SmallInt NOT NULL,
         xsrf_token Char(64) NOT NULL,
-        time_expires Timestamp NOT NULL,
         agreed_to_cookie_policy Boolean NOT NULL,
         -- Foreign key
         user_id Int NULL REFERENCES identity.user(id),
