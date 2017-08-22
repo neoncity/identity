@@ -9,15 +9,15 @@
         "strictNullChecks": true,
         "sourceMap": true,
         "declaration": true,
-	"experimentalDecorators": true,
+	      "experimentalDecorators": true,
         "outDir": "./out"
     },
     "include": [
         "./src/**/*",
-	"./tests/**/*"
+	      "./tests/**/*"
     ],
     "exclude": [
-	"./node_modules",
+	      "./node_modules",
         "./migrations"
     ]
 }
