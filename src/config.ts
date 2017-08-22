@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 
-import { Env, parseEnv, isLocal } from '@neoncity/common-js/env';
+import { Env, parseEnv, isLocal, isOnServer } from '@neoncity/common-js/env';
 
 export const NAME: string = 'identity';
 export const ENV: Env = parseEnv(process.env.ENV);
@@ -16,6 +16,7 @@ export let AUTH0_CLIENT_ID: string;
 export let AUTH0_DOMAIN: string;
 export let LOGGLY_TOKEN: string|null;
 export let LOGGLY_SUBDOMAIN: string|null;
+export let ROLLBAR_TOKEN: string|null;
 
 if (isLocal(ENV)) {
     const secrets = JSON.parse(readFileSync(process.env.SECRETS_PATH, 'utf-8'));
@@ -27,10 +28,12 @@ if (isLocal(ENV)) {
     AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
 }
 
-if (ENV == Env.Local || ENV == Env.Test) {
-    LOGGLY_TOKEN = null;
-    LOGGLY_SUBDOMAIN = null;
-} else {
+if (isOnServer(ENV)) {
     LOGGLY_TOKEN = process.env.LOGGLY_TOKEN;
     LOGGLY_SUBDOMAIN = process.env.LOGGLY_SUBDOMAIN;
+    ROLLBAR_TOKEN = process.env.ROLLBAR_TOKEN;
+} else {
+    LOGGLY_TOKEN = null;
+    LOGGLY_SUBDOMAIN = null;
+    ROLLBAR_TOKEN = null;
 }

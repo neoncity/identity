@@ -49,6 +49,7 @@ ENV AUTH0_CLIENT_ID null
 ENV AUTH0_DOMAIN null
 ENV LOGGLY_TOKEN null
 ENV LOGGLY_SUBDOMAIN null
+ENV ROLLBAR_TOKEN null
 ENV SECRETS_PATH /neoncity/var/secrets.json
 
 RUN chown -R neoncity:neoncity /neoncity/build

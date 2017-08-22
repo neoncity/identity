@@ -13,6 +13,7 @@ import {
     newAuthInfoMiddleware,
     newCheckOriginMiddleware,
     newCheckXsrfTokenMiddleware,
+    newErrorsMiddleware,
     newJsonContentMiddleware,
     newLoggingMiddleware,
     newRequestTimeMiddleware,
@@ -56,6 +57,7 @@ async function main() {
     app.use(newCheckOriginMiddleware(config.CLIENTS));
     app.use(newJsonContentMiddleware());
     app.use(newLoggingMiddleware(config.NAME, config.ENV, config.LOGGLY_TOKEN, config.LOGGLY_SUBDOMAIN));
+    app.use(newErrorsMiddleware(config.NAME, config.ENV, config.ROLLBAR_TOKEN));
 
     if (!isLocal(config.ENV)) {
         app.use(compression());
@@ -72,8 +74,11 @@ async function main() {
             res.write(JSON.stringify(authInfoAndSessionResponseMarshaller.pack(authInfoAndSessionResponse)));
             res.status(created ? HttpStatus.CREATED : HttpStatus.OK);
             res.end();
+
+            throw new Error('Bad stuff');
         } catch (e) {
             req.log.error(e);
+            req.errorLog.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
@@ -97,6 +102,7 @@ async function main() {
             }
 
             req.log.error(e);
+            req.errorLog.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
@@ -125,6 +131,7 @@ async function main() {
             }
 
             req.log.error(e);
+            req.errorLog.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
@@ -163,6 +170,7 @@ async function main() {
             }
 
             req.log.error(e);
+            req.errorLog.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
@@ -187,6 +195,7 @@ async function main() {
             auth0Profile = auth0ProfileMarshaller.extract(JSON.parse(auth0ProfileSerialized));
         } catch (e) {
             req.log.error(e, 'Auth0 Error');
+            req.errorLog.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
             return;
@@ -216,6 +225,7 @@ async function main() {
             }
 
             req.log.error(e);
+            req.errorLog.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
@@ -237,6 +247,7 @@ async function main() {
             auth0Profile = auth0ProfileMarshaller.extract(JSON.parse(auth0ProfileSerialized));
         } catch (e) {
             req.log.error(e, 'Auth0 Error');
+            req.errorLog.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
             return;
@@ -265,6 +276,7 @@ async function main() {
             }
 
             req.log.error(e);
+            req.errorLog.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
@@ -311,6 +323,7 @@ async function main() {
             }
 
             req.log.error(e);
+            req.errorLog.error(e);
             res.status(HttpStatus.INTERNAL_SERVER_ERROR);
             res.end();
         }
