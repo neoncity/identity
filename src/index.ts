@@ -74,8 +74,6 @@ async function main() {
             res.write(JSON.stringify(authInfoAndSessionResponseMarshaller.pack(authInfoAndSessionResponse)));
             res.status(created ? HttpStatus.CREATED : HttpStatus.OK);
             res.end();
-
-            throw new Error('Bad stuff');
         } catch (e) {
             req.log.error(e);
             req.errorLog.error(e);
